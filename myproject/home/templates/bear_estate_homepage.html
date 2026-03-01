@@ -36,62 +36,66 @@
 
     <!-- Hero Section -->
     <section class="hero">
-        <div class="hero-inner">
+        <div class="hero-grid">
 
-            <p class="eyebrow">Real Estate</p>
-            <p class="hero-sub">Thousands of listings.<br/>Start your search today.</p>
+            <div class="hero-inner">
 
-            <!-- Bear image — place your file at static/images/bear.png -->
-            <img src="{% static 'images/bear.png' %}" alt="Polar Bear" class="bear-image">
+                <p class="eyebrow">Real Estate</p>
+                <p class="hero-sub">Thousands of listings.<br/>Start your search today.</p>
 
-            <p class="hero-tagline">Real Estate in the Last Frontier</p>
+                <!-- Bear image — place your file at static/images/bear.png -->
+                <img src="{% static 'images/bear.png' %}" alt="Polar Bear" class="bear-image">
 
-            <!-- Mini Stats -->
-            <div class="mini-stats">
-                <div class="mstat"><strong>10,400+</strong><span>Active Listings</span></div>
-                <div class="mstat-dot"></div>
-                <div class="mstat"><strong>All Alaska</strong><span>Coverage</span></div>
+                <p class="hero-tagline">Real Estate in the Last Frontier</p>
+
+                <!-- Mini Stats -->
+                <div class="mini-stats">
+                    <div class="mstat"><strong>10,400+</strong><span>Active Listings</span></div>
+                    <div class="mstat-dot"></div>
+                    <div class="mstat"><strong>All Alaska</strong><span>Coverage</span></div>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="search-bar">
+                    <div class="search-field">
+                        <label>Location</label>
+                        <input type="text" placeholder="City, neighborhood, or ZIP…" />
+                    </div>
+                    <div class="search-divider"></div>
+                    <div class="search-field">
+                        <label>Type</label>
+                        <select>
+                            <option>Any Type</option>
+                            <option>House</option>
+                            <option>Apartment</option>
+                            <option>Condo</option>
+                            <option>Townhouse</option>
+                        </select>
+                    </div>
+                    <div class="search-divider"></div>
+                    <div class="search-field">
+                        <label>Budget</label>
+                        <select>
+                            <option>Any Price</option>
+                            <option>Under $300k</option>
+                            <option>$300k – $600k</option>
+                            <option>$600k – $1M</option>
+                            <option>$1M+</option>
+                        </select>
+                    </div>
+                    <button class="search-btn">Search →</button>
+                </div>
+
             </div>
 
-            <!-- Search Bar -->
-            <div class="search-bar">
-                <div class="search-field">
-                    <label>Location</label>
-                    <input type="text" placeholder="City, neighborhood, or ZIP…" />
-                </div>
-                <div class="search-divider"></div>
-                <div class="search-field">
-                    <label>Type</label>
-                    <select>
-                        <option>Any Type</option>
-                        <option>House</option>
-                        <option>Apartment</option>
-                        <option>Condo</option>
-                        <option>Townhouse</option>
-                    </select>
-                </div>
-                <div class="search-divider"></div>
-                <div class="search-field">
-                    <label>Budget</label>
-                    <select>
-                        <option>Any Price</option>
-                        <option>Under $300k</option>
-                        <option>$300k – $600k</option>
-                        <option>$600k – $1M</option>
-                        <option>$1M+</option>
-                    </select>
-                </div>
-                <button class="search-btn">Search →</button>
-            </div>
+            <!-- Map Section — place your file at static/images/alaska.jpg -->
+            <section id="map"
+                     class="map-section map-right"
+                     uk-parallax="y: -50,50; opacity: 1,0.9">
+                <img src="{% static 'images/alaska.jpg' %}" alt="Alaska Map">
+            </section>
 
         </div>
-    </section>
-
-    <!-- Map Section — place your file at static/images/alaska.jpg -->
-    <section id="map"
-             class="map-section"
-             uk-parallax="y: -50,50; opacity: 1,0.9">
-        <img src="{% static 'images/alaska.jpg' %}" alt="Alaska Map">
     </section>
 
     <!-- Login / Signup Modal -->
