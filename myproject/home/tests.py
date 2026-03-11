@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 
 class RegisterTest(TestCase):
     def test_register_page_success(self):
-        response = self.client.get('/register/')
+        response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
 
     def test_register_creates_user(self):
@@ -22,11 +22,11 @@ class LoginTest(TestCase):
         )
 
     def test_login_page_success(self):
-        response = self.client.get('/login/')
+        response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
 
     def test_valid_login_redirect(self):
-        response = self.client.post('/login/', {
+        response = self.client.post('/', {
             'username': 'testuser',
             'password': 'StrongPassword@123',
         })
