@@ -1,4 +1,4 @@
-{% load static %}0
+{% load static %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -7,79 +7,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BearEstate</title>
 
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-
-    <!-- UIkit CSS -->
     <link href="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/css/uikit.min.css" rel="stylesheet">
-
-    <!-- BearEstate Styles -->
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-
-    <!-- UIkit JS -->
     <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit-icons.min.js"></script>
 </head>
 
 <body>
 
-    <!-- Banner with Login/Signup in upper right -->
+    <!-- Banner -->
     <div class="top-banner">
         <h1>BearEstate</h1>
-
-        <!-- Right side: bear + login/signup -->
         <div class="nav-right">
-            <img
-                src="{% static 'images/bear.png' %}"
-                alt="BearEstate polar bear mascot"
-                class="nav-bear"
-                data-darkreader-ignore
-            >
+            <img src="{% static 'images/bear.png' %}" alt="BearEstate polar bear mascot" class="nav-bear" data-darkreader-ignore>
             <div class="nav-buttons">
-                <a href="#" class="btn-login" id="loginBtn">Log In</a>
-                <a href="#" class="btn-signup" id="signupBtn">Sign Up</a>
+                {% if user.is_authenticated %}
+                    <span class="btn-login" style="cursor:default;">Hi, {{ user.username }}</span>
+                    <form method="POST" action="{% url 'logout' %}" style="display:inline;">
+                        {% csrf_token %}
+                      <button type="submit" class="btn-signup" style="border:none; cursor:pointer;">Log Out</button>
+                    </form>
+                {% else %}
+                    <a href="#" class="btn-login" id="loginBtn">Log In</a>
+                    <a href="#" class="btn-signup" id="signupBtn">Sign Up</a>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <!-- Triangle (below banner, grows horizontally on scroll) -->
+    <!-- Triangle -->
     <div id="triangle" class="triangle"></div>
 
     <!-- Hero Section -->
     <section class="hero hero-bg">
-        <img
-            src="{% static 'images/college_snow.jpg' %}"
-            alt=""
-            class="hero-bg-img"
-            aria-hidden="true"
-            data-darkreader-ignore
-        >
-
+        <img src="{% static 'images/college_snow.jpg' %}" alt="" class="hero-bg-img" aria-hidden="true" data-darkreader-ignore>
         <div class="hero-grid">
             <div class="hero-inner">
-
                 <p class="eyebrow">Built for Students</p>
                 <p class="hero-sub">Find housing. Post subleases.<br/>Message roommates directly.</p>
-
                 <p class="hero-tagline">College Housing Network — Nationwide</p>
 
-                <!-- Mini Stats -->
                 <div class="mini-stats">
                     <div class="mstat"><strong>50 States</strong><span>Nationwide Coverage</span></div>
                     <div class="mstat-dot"></div>
                     <div class="mstat"><strong>Live Chat</strong><span>Direct Messaging</span></div>
                 </div>
 
-                <!-- Search Bar -->
                 <div class="search-bar" role="search" aria-label="Housing search">
                     <div class="search-field">
                         <label for="searchLocation">Location</label>
                         <input id="searchLocation" type="text" placeholder="City, neighborhood, or ZIP…" />
                     </div>
-
                     <div class="search-divider"></div>
-
-                    <!-- Rent vs Buy -->
                     <div class="search-field">
                         <label for="searchIntent">Looking to</label>
                         <select id="searchIntent">
@@ -87,9 +67,7 @@
                             <option value="buy">Buy</option>
                         </select>
                     </div>
-
                     <div class="search-divider"></div>
-
                     <div class="search-field">
                         <label for="searchType">Type</label>
                         <select id="searchType">
@@ -100,14 +78,10 @@
                             <option>Townhouse</option>
                         </select>
                     </div>
-
                     <div class="search-divider"></div>
-
-                    <!-- Budget changes based on Rent vs Buy -->
                     <div class="search-field">
                         <label for="searchBudget" id="budgetLabel">Monthly Rent</label>
                         <select id="searchBudget">
-                            <!-- Default: RENT options -->
                             <option value="any">Any Rent</option>
                             <option value="0-900">Under $900</option>
                             <option value="900-1400">$900 – $1,400</option>
@@ -115,10 +89,8 @@
                             <option value="2000-999999">$2,000+</option>
                         </select>
                     </div>
-
                     <button class="search-btn" id="searchBtn" type="button">Search →</button>
                 </div>
-
             </div>
         </div>
     </section>
@@ -129,12 +101,10 @@
             <h3>Post Your Place</h3>
             <p>Subleasing? Looking for roommates? List it in minutes.</p>
         </div>
-
         <div class="feature">
             <h3>Message Instantly</h3>
             <p>Talk directly with homeowners and other students — no middlemen.</p>
         </div>
-
         <div class="feature">
             <h3>Student Focused</h3>
             <p>Designed for students, open to all.</p>
@@ -149,23 +119,61 @@
                 <button class="tab active" id="tabLogin">Log In</button>
                 <button class="tab" id="tabSignup">Sign Up</button>
             </div>
+
+            <!-- LOGIN FORM — posts to index view -->
             <div class="form-panel" id="formLogin">
                 <h2 class="modal-title">Welcome back</h2>
                 <p class="modal-sub">Log in to see saved properties</p>
-                <div class="field"><label>Email</label><input type="email" placeholder="youremail@example.com" /></div>
-                <div class="field"><label>Password</label><input type="password" placeholder="••••••••" /></div>
-                <a href="#" class="forgot">Forgot password?</a>
-                <button class="btn-submit">Log In</button>
-                <p class="switch-text">No account? <a href="#" id="switchToSignup">Sign up</a></p>
+                <form method="POST" action="/">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label for="login-username">Username</label>
+                        <input id="login-username" type="text" name="username" placeholder="Your username" required />
+                    </div>
+                    <div class="field">
+                        <label for="login-password">Password</label>
+                        <input id="login-password" type="password" name="password" placeholder="••••••••" required />
+                    </div>
+                    {% if login_error %}
+                        <p style="color:#c0392b; font-size:0.85rem; margin-bottom:0.5rem;">{{ login_error }}</p>
+                    {% endif %}
+                    <button class="btn-submit" type="submit">Log In</button>
+                    <p class="switch-text">No account? <a href="#" id="switchToSignup">Sign up</a></p>
+                </form>
             </div>
+
+            <!-- SIGNUP FORM — posts to register view -->
             <div class="form-panel hidden" id="formSignup">
                 <h2 class="modal-title">Create account</h2>
                 <p class="modal-sub">Join thousands of students finding housing</p>
-                <div class="field"><label>Full Name</label><input type="text" placeholder="Jane Smith" /></div>
-                <div class="field"><label>Email</label><input type="email" placeholder="you@example.com" /></div>
-                <div class="field"><label>Password</label><input type="password" placeholder="Create a password" /></div>
-                <button class="btn-submit">Create Account</button>
-                <p class="switch-text">Already have an account? <a href="#" id="switchToLogin">Log in</a></p>
+                <form method="POST" action="{% url 'register' %}">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label for="reg-username">Username</label>
+                        <input id="reg-username" type="text" name="username" placeholder="Choose a username" required />
+                    </div>
+                    <div class="field">
+                        <label for="reg-email">Email <span style="opacity:0.5;">(optional)</span></label>
+                        <input id="reg-email" type="email" name="email" placeholder="you@example.com" />
+                    </div>
+                    <div class="field">
+                        <label for="reg-password1">Password</label>
+                        <input id="reg-password1" type="password" name="password1" placeholder="Create a password" required />
+                    </div>
+                    <div class="field">
+                        <label for="reg-password2">Confirm Password</label>
+                        <input id="reg-password2" type="password" name="password2" placeholder="Repeat your password" required />
+                    </div>
+                    {% if register_errors %}
+                        <ul style="color:#c0392b; font-size:0.85rem; margin-bottom:0.5rem; padding-left:1rem;">
+                            {% for error in register_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    <button class="btn-submit" type="submit">Create Account</button>
+                    <p class="switch-text">Already have an account? <a href="#" id="switchToLogin">Log in</a></p>
+                </form>
             </div>
         </div>
     </div>
@@ -194,7 +202,6 @@
             { value: '1400-2000', label: '$1,400 – $2,000' },
             { value: '2000-999999', label: '$2,000+' },
         ];
-
         const buyOptions = [
             { value: 'any', label: 'Any Price' },
             { value: '0-300000', label: 'Under $300k' },
@@ -215,7 +222,6 @@
 
         function updateBudgetOptions() {
             const mode = searchIntent.value;
-
             if (mode === 'rent') {
                 budgetLabel.textContent = 'Monthly Rent';
                 setSelectOptions(searchBudget, rentOptions);
@@ -233,7 +239,6 @@
             const mode = searchIntent.value;
             const type = document.getElementById('searchType').value;
             const budget = searchBudget.value;
-
             console.log({ location, mode, type, budget });
         });
     </script>
@@ -261,14 +266,18 @@
             formSignup.classList.toggle('hidden', isLogin);
         }
 
-        loginBtn.addEventListener('click',  e => { e.preventDefault(); showModal('login');  });
-        signupBtn.addEventListener('click', e => { e.preventDefault(); showModal('signup'); });
+        if (loginBtn)  loginBtn.addEventListener('click',  e => { e.preventDefault(); showModal('login');  });
+        if (signupBtn) signupBtn.addEventListener('click', e => { e.preventDefault(); showModal('signup'); });
         closeBtn.addEventListener('click',  hideModal);
         backdrop.addEventListener('click',  e => { if (e.target === backdrop) hideModal(); });
         tabLogin.addEventListener('click',  () => setTab('login'));
         tabSignup.addEventListener('click', () => setTab('signup'));
         switchSU.addEventListener('click',  e => { e.preventDefault(); setTab('signup'); });
         switchLI.addEventListener('click',  e => { e.preventDefault(); setTab('login');  });
+
+        // Auto-reopen modal if Django returned errors
+        {% if show_login_modal %}  showModal('login');  {% endif %}
+        {% if show_signup_modal %} showModal('signup'); {% endif %}
     </script>
 
 </body>
