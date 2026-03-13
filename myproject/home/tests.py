@@ -34,6 +34,47 @@ class LoginTest(TestCase):
 
 
 
+class PropertyFilterTests(TestCase):
+    def setUp(self):
+        from home.models import PropertyPriceFilter
+        self.apartment1 = PropertyPriceFilter.objects.create(
+            title="Affordable Apartment",
+            price=1000,
+            property_type="apartment",
+            latitude=38.89,
+            longitude=-104.79
+        )
+        self.apartment2 = PropertyPriceFilter.objects.create(
+            title="Luxury Apartment",
+            price=2000,
+            property_type="apartment",
+            latitude=38.8251,
+            longitude=104.8190
+        )
+        self.house1 = PropertyPriceFilter.objects.create(
+            title="Affordable House", price=900, property_type="house",
+            latitude=38.85, longitude=-104.75
+        )
+        self.house2 = PropertyPriceFilter.objects.create(
+            title="Expensive House", price=3000, property_type="house",
+            latitude=38.80, longitude=-104.80
+        )
+
+
+    def test_filter_by_price_range_and_property_type_returns_only_matching_properties(self):
+        response = self.client.get('/properties/map/', {
+            'min_price': 800,
+            'max_price': 1000,
+            'property_type': 'apartment'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Affordable Apartment")
+        self.assertNotContains(response, "Affordable House")
+        self.assertNotContains(response, "Expensive House")
+        self.assertNotContains(response, "Luxury Apartment")
+
+
 class RoommatePostingTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='poster', password='Password123!')
@@ -51,8 +92,8 @@ class RoommatePostingTest(TestCase):
     def test_create_post_saves_to_database(self):
         from home.models import RoommatePosting
         self.client.post('/roommates/post/', {
-        'message': 'Looking for a roommate near campus.',
-        'date_posted': '2026-03-11',
-        'status': 'open'
+            'message': 'Looking for a roommate near campus.',
+            'date_posted': '2026-03-11',
+            'status': 'open'
     })
         self.assertEqual(RoommatePosting.objects.count(), 1)
