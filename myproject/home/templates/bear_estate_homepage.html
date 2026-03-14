@@ -81,7 +81,6 @@
 
 <div class="search-divider"></div>
 
-<!-- Budget filter allows users to search properties within their price range -->
 <div class="search-field">
 <label for="searchBudget" id="budgetLabel">Monthly Rent</label>
 <select id="searchBudget" name="budget">
@@ -101,8 +100,6 @@
 </div>
 </section>
 
-<!-- SEARCH RESULTS SECTION  -->
-
 <section class="property-results">
 
 <h2>Search Results</h2>
@@ -115,12 +112,12 @@
 {% for property in properties %}
 
 <div class="property-card">
-    <h3>{{ property.title }}</h3>
-    <p><strong>Location:</strong> {{ property.location }}</p>
-    <p><strong>Type:</strong> {{ property.property_type|title }}</p>
-    <p><strong>Listing:</strong> {{ property.listing_type|title }}</p>
-    <p><strong>Price:</strong> ${{ property.price }}</p>
-    <p>{{ property.description }}</p>
+<h3>{{ property.title }}</h3>
+<p><strong>Location:</strong> {{ property.location }}</p>
+<p><strong>Type:</strong> {{ property.property_type|title }}</p>
+<p><strong>Listing:</strong> {{ property.listing_type|title }}</p>
+<p><strong>Price:</strong> ${{ property.price }}</p>
+<p>{{ property.description }}</p>
 </div>
 
 {% endfor %}
@@ -133,8 +130,29 @@
 
 {% endif %}
 
-</section>
+<!-- RENTCAST API RESULTS -->
 
+{% if api_properties %}
+
+<h2>Additional Listings</h2>
+
+<div class="property-grid">
+
+{% for property in api_properties %}
+
+<div class="property-card">
+<h3>{{ property.address }}</h3>
+<p><strong>City:</strong> {{ property.city }}</p>
+<p><strong>Price:</strong> ${{ property.price }}</p>
+</div>
+
+{% endfor %}
+
+</div>
+
+{% endif %}
+
+</section>
 
 <section class="student-features">
 <div class="feature">
