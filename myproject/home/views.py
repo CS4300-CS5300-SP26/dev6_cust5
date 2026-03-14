@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from .models import Property
+from .rentcast_api import get_properties
 
 
 def index(request):
@@ -10,10 +11,17 @@ def index(request):
     property_type = request.GET.get("type", "").strip()
     price_range = request.GET.get("budget", "").strip()
 
+    # External API properties
+    api_properties = []
+
     if location:
         properties = properties.filter(location__icontains=location)
 
-
+        # Fetch properties from RentCast API
+        try:
+            api_properties = get_properties(location)
+        except:
+            api_properties = []
 
     if listing_type in ["rent", "buy"]:
         properties = properties.filter(listing_type=listing_type)
@@ -21,22 +29,24 @@ def index(request):
     if property_type and property_type.lower() != "any type":
         properties = properties.filter(property_type=property_type.lower())
 
-# Apply price range filter selected by the user
+    # Apply price range filter selected by the user
     if price_range and price_range != "any":
         try:
             min_price, max_price = map(int, price_range.split("-"))
             properties = properties.filter(price__gte=min_price, price__lte=max_price)
         except ValueError:
             pass
-    
+
     result_count = properties.count()
 
     context = {
         "properties": properties,
+        "api_properties": api_properties,
         "selected_location": location,
         "selected_intent": listing_type,
         "selected_type": property_type,
         "selected_budget": price_range,
+        "result_count": result_count,
     }
 
     return render(request, "bear_estate_homepage.html", context)
