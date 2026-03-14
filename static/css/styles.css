@@ -214,32 +214,34 @@ body {
 .search-bar {
     display: flex;
     align-items: center;
-    background: rgba(255,255,255,0.92);
+    background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(10px);
-    border: 1.5px solid rgba(--border);
+    border: 1.5px solid var(--border);
     border-radius: 16px;
     padding: 0.5rem 0.5rem 0.5rem 1.5rem;
     margin-bottom: 1.5rem;
-    box-shadow: 0 8px 40px rgba(74,144,196,0.10);
+    box-shadow: 0 8px 40px rgba(74, 144, 196, 0.10);
     max-width: 620px;
 }
-
-/*Creating a screen to screen search bar*/
-/*In the search page we need a larger and differently placed search field*/
+ 
+/* Search page: full-width bar, tighter radius */
 .search-bar--wide {
     max-width: 100%;
     border-radius: var(--radius);
     overflow: hidden;
     padding: 0;
 }
-
+ 
 .search-field {
     flex: 1;
     display: flex;
     flex-direction: column;
     padding: 0.5rem 0.8rem;
 }
-
+ 
+/* Search page field padding */
+.search-bar--wide .search-field { padding: 12px 20px; }
+ 
 .search-field label {
     font-size: 0.62rem;
     font-weight: 600;
@@ -248,7 +250,7 @@ body {
     color: var(--text-muted);
     margin-bottom: 0.25rem;
 }
-
+ 
 .search-field input,
 .search-field select {
     border: none;
@@ -262,19 +264,22 @@ body {
     cursor: pointer;
 }
 .search-field select { -webkit-appearance: none; appearance: none; }
-
+ 
 .search-divider {
     width: 1px;
     height: 34px;
-    background: rgba(--border);
+    background: var(--border);
     flex-shrink: 0;
 }
-
+ 
+/* Search page: full-height divider */
+.search-bar--wide .search-divider { height: auto; margin: 10px 0; }
+ 
 .search-btn {
     background: var(--teal-dark);
     color: var(--white);
     border: none;
-    border-radius: 12px;
+    border-radius: var(--radius);
     padding: 0.9rem 1.4rem;
     font-family: var(--font-body);
     font-size: 0.9rem;
@@ -286,6 +291,10 @@ body {
     flex-shrink: 0;
 }
 .search-btn:hover { background: var(--blue-dark); transform: scale(1.03); }
+ 
+/* Search page: flush button, no margin */
+.search-bar--wide .search-btn { margin-left: 0; border-radius: 0; padding: 0 32px; }
+.search-bar--wide .search-btn:hover { transform: none; }
 
 /* ── Map Section ───────────────────────────────── */
 .map-section {
