@@ -21,5 +21,6 @@ from home import views
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", views.index, name="bear_estate_homepage"),
+    path('roommate-posts/', include('home.urls')),
 
 ]
