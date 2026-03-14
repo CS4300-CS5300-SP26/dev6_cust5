@@ -1,0 +1,463 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BearEstate — Search</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <!-- UIkit CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/css/uikit.min.css" rel="stylesheet">
+
+    <!-- Shared BearEstate styles (modal, search bar, nav, variables, etc.) -->
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+
+    <!-- UIkit JS -->
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit-icons.min.js"></script>
+
+    <style>
+        /* ── Page background ───────────────────────────────────────── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 10%, rgba(26,122,138,0.13) 0%, transparent 65%),
+                radial-gradient(ellipse 60% 80% at 85% 80%, rgba(15,85,96,0.10) 0%, transparent 60%),
+                linear-gradient(160deg, #e8f4f6 0%, #f4f0e8 50%, #eaf2f4 100%);
+            z-index: -1;
+        }
+
+        /* ── Search section wrapper ────────────────────────────────── */
+        .search-section {
+            padding: 36px 40px 28px;
+            max-width: 1160px;
+            margin: 0 auto;
+        }
+
+        .search-section h2 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 400;
+            color: var(--teal-dark);
+            margin-bottom: 18px;
+            letter-spacing: 0.01em;
+            font-style: italic;
+        }
+
+        /* ── Results section ───────────────────────────────────────── */
+        .results-section {
+            max-width: 1160px;
+            margin: 0 auto;
+            padding: 0 40px 60px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 1.65rem;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: 0.01em;
+        }
+
+        .section-count {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        /* ── Carousel ──────────────────────────────────────────────── */
+        .carousel-outer { position: relative; }
+
+        .carousel-track {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: calc((100% - 32px) / 3);
+            gap: 16px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 12px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--teal-light) transparent;
+        }
+        .carousel-track::-webkit-scrollbar { height: 4px; }
+        .carousel-track::-webkit-scrollbar-track { background: transparent; }
+        .carousel-track::-webkit-scrollbar-thumb { background: var(--teal-light); border-radius: 4px; }
+
+        .carousel-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-60%);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.92);
+            border: 1.5px solid var(--border);
+            box-shadow: 0 2px 12px rgba(26,122,138,0.15);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: background 0.2s, border-color 0.2s;
+            font-size: 1rem;
+            color: var(--teal-dark);
+        }
+        .carousel-arrow:hover { background: var(--teal-dark); color: var(--white); border-color: var(--teal-dark); }
+        .carousel-arrow.left  { left: -20px; }
+        .carousel-arrow.right { right: -20px; }
+
+        /* ── Roommate card ─────────────────────────────────────────── */
+        .roommate-card {
+            scroll-snap-align: start;
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: transform 0.25s, box-shadow 0.25s;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+        }
+        .roommate-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 36px rgba(26,122,138,0.16);
+        }
+
+        .card-photo {
+            width: 100%;
+            height: 180px;
+            background: linear-gradient(135deg, rgba(26,122,138,0.12) 0%, rgba(26,122,138,0.22) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .card-photo img { width: 100%; height: 100%; object-fit: cover; }
+
+        .card-badge {
+            position: absolute;
+            top: 12px; right: 12px;
+            background: var(--teal-dark);
+            color: var(--white);
+            font-size: 0.68rem;
+            font-weight: 500;
+            padding: 3px 10px;
+            border-radius: 20px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .card-body {
+            padding: 16px 18px 18px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .card-name {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .card-location {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .card-location svg { width: 12px; height: 12px; fill: var(--teal-dark); flex-shrink: 0; }
+
+        .card-price {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--teal-dark);
+        }
+        .card-price span {
+            font-family: var(--font-body);
+            font-size: 0.78rem;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        .card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+        .tag {
+            font-size: 0.72rem;
+            font-weight: 500;
+            padding: 3px 10px;
+            border-radius: 20px;
+            background: rgba(26,122,138,0.08);
+            color: var(--teal-dark);
+            border: 1px solid var(--border);
+        }
+
+        .card-bio {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            line-height: 1.55;
+            margin-top: auto;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-cta {
+            display: block;
+            text-align: center;
+            margin-top: 14px;
+            padding: 9px 0;
+            background: transparent;
+            border: 1.5px solid var(--teal-dark);
+            border-radius: 7px;
+            color: var(--teal-dark);
+            font-size: 0.82rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: background 0.18s, color 0.18s;
+            letter-spacing: 0.03em;
+        }
+        .card-cta:hover { background: var(--teal-dark); color: var(--white); }
+
+        /* ── Empty state ───────────────────────────────────────────── */
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+        .empty-state h3 {
+            font-family: var(--font-display);
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        /* ── Responsive ────────────────────────────────────────────── */
+        @media (max-width: 900px) {
+            .carousel-track { grid-auto-columns: calc((100% - 16px) / 2); }
+        }
+        @media (max-width: 600px) {
+            .search-section, .results-section { padding-left: 16px; padding-right: 16px; }
+            .carousel-track { grid-auto-columns: 85%; }
+            .carousel-arrow { display: none; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ── Top Banner (sticky light variant) ──────────────────────── -->
+    <div class="top-banner top-banner--sticky">
+        <a href="/" style="text-decoration:none"><h1>BearEstate</h1></a>
+        <div class="nav-buttons">
+            <a href="#" class="btn-login" id="loginBtn">Log In</a>
+            <a href="#" class="btn-signup" id="signupBtn">Sign Up</a>
+        </div>
+    </div>
+
+    <!-- ── Compact Search Bar ─────────────────────────────────────── -->
+    <section class="search-section">
+        <h2>Find your match in Alaska</h2>
+        <div class="search-bar search-bar--wide">
+            <div class="search-field">
+                <label>Search</label>
+                <input type="text" placeholder="Name, keyword…" value="{{ request.GET.q }}" />
+            </div>
+            <div class="search-divider"></div>
+            <div class="search-field">
+                <label>Looking For</label>
+                <select>
+                    <option>Any Gender</option>
+                    <option>Male</option>
+                    <option>Female</option>
+                    <option>Non-binary</option>
+                    <option>Any</option>
+                </select>
+            </div>
+            <div class="search-divider"></div>
+            <div class="search-field">
+                <label>Looking To</label>
+                <select>
+                    <option>Any</option>
+                    <option>Rent a Room</option>
+                    <option>Fill a Room</option>
+                    <option>Co-lease</option>
+                </select>
+            </div>
+            <div class="search-divider"></div>
+            <div class="search-field">
+                <label>Type</label>
+                <select>
+                    <option>Any Type</option>
+                    <option>House</option>
+                    <option>Apartment</option>
+                    <option>Condo</option>
+                    <option>Townhouse</option>
+                </select>
+            </div>
+            <div class="search-divider"></div>
+            <div class="search-field">
+                <label>Monthly Rent</label>
+                <select>
+                    <option>Any Price</option>
+                    <option>Under $600</option>
+                    <option>$600 – $900</option>
+                    <option>$900 – $1,200</option>
+                    <option>$1,200+</option>
+                </select>
+            </div>
+            <button class="search-btn">Search →</button>
+        </div>
+    </section>
+
+    <!-- ── Roommate Postings Carousel ─────────────────────────────── -->
+    <section class="results-section">
+        <div class="section-header">
+            <h2 class="section-title">Roommate Postings</h2>
+            <span class="section-count" id="resultCount">Loading…</span>
+        </div>
+        <div class="carousel-outer">
+            <button class="carousel-arrow left" id="arrowLeft">&#8592;</button>
+            <div class="carousel-track" id="carouselTrack"></div>
+            <button class="carousel-arrow right" id="arrowRight">&#8594;</button>
+        </div>
+    </section>
+
+    <!-- ── Modal (markup unchanged, styles now come from styles.css) ─ -->
+    <div class="modal-backdrop" id="modalBackdrop">
+        <div class="modal">
+            <button class="modal-close" id="modalClose">✕</button>
+            <div class="modal-tabs">
+                <button class="tab active" id="tabLogin">Log In</button>
+                <button class="tab" id="tabSignup">Sign Up</button>
+            </div>
+            <div class="form-panel" id="formLogin">
+                <h2 class="modal-title">Welcome back</h2>
+                <p class="modal-sub">Log in to see your saved homes</p>
+                <div class="field"><label>Email</label><input type="email" placeholder="you@example.com" /></div>
+                <div class="field"><label>Password</label><input type="password" placeholder="••••••••" /></div>
+                <a href="#" class="forgot">Forgot password?</a>
+                <button class="btn-submit">Log In</button>
+                <p class="switch-text">No account? <a href="#" id="switchToSignup">Sign up</a></p>
+            </div>
+            <div class="form-panel hidden" id="formSignup">
+                <h2 class="modal-title">Create account</h2>
+                <p class="modal-sub">Join thousands of happy homeowners</p>
+                <div class="field"><label>Full Name</label><input type="text" placeholder="Jane Smith" /></div>
+                <div class="field"><label>Email</label><input type="email" placeholder="you@example.com" /></div>
+                <div class="field"><label>Password</label><input type="password" placeholder="Create a password" /></div>
+                <button class="btn-submit">Create Account</button>
+                <p class="switch-text">Already have an account? <a href="#" id="switchToLogin">Log in</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    /* ── Roommate card renderer ─────────────────────────────────────
+       To wire up Django replace the DEMO_LISTINGS line with:
+         const listings = {{ roommate_postings|safe }};
+    ────────────────────────────────────────────────────────────────*/
+
+    const DEMO_LISTINGS = [
+        { id:1, name:"Mara Thompson",  location:"Anchorage, AK", rent:850, type:"Apartment",  looking_for:"Female", tags:["Non-smoker","Pet-friendly","WFH"],           bio:"Grad student, tidy, love hiking on weekends. Looking for someone chill.", photo_url:null, status:"Active" },
+        { id:2, name:"Jake Sorenson",  location:"Fairbanks, AK", rent:620, type:"House",      looking_for:"Any",    tags:["Outdoorsy","Quiet hours","Split utilities"],  bio:"Wildlife biologist. Often out in the field. Need a responsible co-tenant.", photo_url:null, status:"Active" },
+        { id:3, name:"Priya Nair",     location:"Juneau, AK",    rent:975, type:"Condo",      looking_for:"Any",    tags:["Vegetarian kitchen","Remote-worker","No pets"],bio:"Software engineer, tidy & quiet. Great harbor views from the living room.", photo_url:null, status:"Active" },
+        { id:4, name:"Cole Whitfield", location:"Wasilla, AK",   rent:700, type:"Townhouse",  looking_for:"Male",   tags:["Pet-friendly","Flexible lease","Garage"],      bio:"Mechanic, easy-going. Looking for someone who respects shared spaces.", photo_url:null, status:"Active" },
+        { id:5, name:"Dana Reyes",     location:"Sitka, AK",     rent:880, type:"House",      looking_for:"Female", tags:["Yoga studio","Non-smoker","Ocean view"],        bio:"Teacher & part-time kayak guide. Quiet home, big porch, love cooking.", photo_url:null, status:"Active" },
+        { id:6, name:"Eli Nakamura",   location:"Anchorage, AK", rent:940, type:"Apartment",  looking_for:"Any",    tags:["Artist-friendly","Late-night ok","Furnished"],  bio:"Musician and barista. Night-owl but respectful. Near UAA campus.", photo_url:null, status:"Active" },
+    ];
+
+    const AVATARS = ["🧑‍🦱","👩‍🦰","🧑‍🦳","👨‍🦲","👩","🧑"];
+
+    function buildCard(p, idx) {
+        const card = document.createElement('div');
+        card.className = 'roommate-card';
+        const photo = p.photo_url
+            ? `<img src="${p.photo_url}" alt="${p.name}">`
+            : `<span style="font-size:3.5rem">${AVATARS[idx % AVATARS.length]}</span>`;
+        const tags = (p.tags || []).slice(0,3).map(t => `<span class="tag">${t}</span>`).join('');
+        card.innerHTML = `
+            <div class="card-photo">
+                ${photo}
+                <span class="card-badge">${p.status || 'Active'}</span>
+            </div>
+            <div class="card-body">
+                <div class="card-name">${p.name}</div>
+                <div class="card-location">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/>
+                    </svg>
+                    ${p.location}
+                </div>
+                <div class="card-price">$${p.rent.toLocaleString()}<span> / mo · ${p.type}</span></div>
+                <div class="card-tags">${tags}</div>
+                <p class="card-bio">${p.bio}</p>
+                <a href="/roommate/${p.id}/" class="card-cta">View Posting →</a>
+            </div>`;
+        return card;
+    }
+
+    const track   = document.getElementById('carouselTrack');
+    const countEl = document.getElementById('resultCount');
+    const listings = DEMO_LISTINGS; // ← swap for {{ roommate_postings|safe }}
+
+    if (!listings.length) {
+        track.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🏔️</div><h3>No postings found</h3><p>Try adjusting your search filters.</p></div>`;
+        countEl.textContent = '0 postings';
+    } else {
+        listings.forEach((p, i) => track.appendChild(buildCard(p, i)));
+        countEl.textContent = listings.length + ' posting' + (listings.length !== 1 ? 's' : '');
+    }
+
+    document.getElementById('arrowLeft').addEventListener('click',  () => track.scrollBy({ left: -(track.clientWidth / 3 + 16), behavior: 'smooth' }));
+    document.getElementById('arrowRight').addEventListener('click', () => track.scrollBy({ left:  (track.clientWidth / 3 + 16), behavior: 'smooth' }));
+
+    // ── Modal ──────────────────────────────────────────────────────
+    const backdrop = document.getElementById('modalBackdrop');
+    const formLogin  = document.getElementById('formLogin');
+    const formSignup = document.getElementById('formSignup');
+    const tabLogin   = document.getElementById('tabLogin');
+    const tabSignup  = document.getElementById('tabSignup');
+
+    function showModal(mode) { backdrop.classList.add('active'); setTab(mode); }
+    function hideModal()     { backdrop.classList.remove('active'); }
+    function setTab(mode) {
+        const isLogin = mode === 'login';
+        tabLogin.classList.toggle('active', isLogin);
+        tabSignup.classList.toggle('active', !isLogin);
+        formLogin.classList.toggle('hidden', !isLogin);
+        formSignup.classList.toggle('hidden', isLogin);
+    }
+
+    document.getElementById('loginBtn').addEventListener('click',      e => { e.preventDefault(); showModal('login');  });
+    document.getElementById('signupBtn').addEventListener('click',     e => { e.preventDefault(); showModal('signup'); });
+    document.getElementById('modalClose').addEventListener('click',    hideModal);
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) hideModal(); });
+    tabLogin.addEventListener('click',  () => setTab('login'));
+    tabSignup.addEventListener('click', () => setTab('signup'));
+    document.getElementById('switchToSignup').addEventListener('click', e => { e.preventDefault(); setTab('signup'); });
+    document.getElementById('switchToLogin').addEventListener('click',  e => { e.preventDefault(); setTab('login');  });
+    </script>
+
+</body>
+</html>
