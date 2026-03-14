@@ -20,7 +20,7 @@ def index(request):
         # Fetch properties from RentCast API
         try:
             api_properties = get_properties(location)
-        except:
+        except Exception:
             api_properties = []
 
     if listing_type in ["rent", "buy"]:
