@@ -18,7 +18,7 @@ def index(request):
 
     if property_type and property_type.lower() != "any type":
         properties = properties.filter(property_type=property_type.lower())
-
+# Filter properties within the selected price range
     if budget and budget != "any":
         try:
             min_price, max_price = budget.split("-")
