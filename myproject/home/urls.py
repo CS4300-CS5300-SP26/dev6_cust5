@@ -1,9 +1,13 @@
 from django.urls import include, path
+from rest_framework.routers import DefaultRouter
 from . import views
 
-urlpatterns = [
-    path('view/', views.roommate_view, name='rm_view')
-    #path('post/', views., name='rm_post')
+# Routers for API view
+router = DefaultRouter()
+router.register('', views.RoommatePostViewSet, basename='rm_post')
 
+urlpatterns = [
+    path('view/', views.roommate_view, name='rm_view'),
+    path('api/', include(router.urls)),
 
 ]
