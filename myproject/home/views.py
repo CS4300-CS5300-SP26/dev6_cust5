@@ -8,7 +8,7 @@ def index(request):
     location = request.GET.get("location", "").strip()
     listing_type = request.GET.get("intent", "").strip()
     property_type = request.GET.get("type", "").strip()
-    budget = request.GET.get("budget", "").strip()
+    price_range = request.GET.get("budget", "").strip()
 
     if location:
         properties = properties.filter(location__icontains=location)
@@ -18,10 +18,10 @@ def index(request):
 
     if property_type and property_type.lower() != "any type":
         properties = properties.filter(property_type=property_type.lower())
-# Filter properties within the selected price range
-    if budget and budget != "any":
+
+    if price_range and price_range != "any":
         try:
-            min_price, max_price = budget.split("-")
+            min_price, max_price = map(int, price_range.split("-"))
             properties = properties.filter(price__gte=min_price, price__lte=max_price)
         except ValueError:
             pass
@@ -31,7 +31,7 @@ def index(request):
         "selected_location": location,
         "selected_intent": listing_type,
         "selected_type": property_type,
-        "selected_budget": budget,
+        "selected_budget": price_range,
     }
 
     return render(request, "bear_estate_homepage.html", context)
