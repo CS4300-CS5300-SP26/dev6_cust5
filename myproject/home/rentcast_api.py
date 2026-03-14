@@ -1,6 +1,7 @@
 import requests
+import os
 
-API_KEY = "YOUR_API_KEY"
+API_KEY = os.getenv("RENTCAST_API_KEY")
 
 def get_properties(city):
     url = "https://api.rentcast.io/v1/properties"
@@ -14,9 +15,13 @@ def get_properties(city):
         "limit": 10
     }
 
-    response = requests.get(url, headers=headers, params=params)
+    try:
+        response = requests.get(url, headers=headers, params=params)
 
-    if response.status_code == 200:
-        return response.json()
+        if response.status_code == 200:
+            return response.json()
+
+    except Exception:
+        pass
 
     return []
