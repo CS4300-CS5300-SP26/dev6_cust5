@@ -1,275 +1,166 @@
-{% load static %}0
+{% load static %}
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BearEstate</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BearEstate</title>
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/css/uikit.min.css" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/styles.css' %}">
 
-    <!-- UIkit CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/css/uikit.min.css" rel="stylesheet">
-
-    <!-- BearEstate Styles -->
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-
-    <!-- UIkit JS -->
-    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit-icons.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit-icons.min.js"></script>
 </head>
 
 <body>
 
-    <!-- Banner with Login/Signup in upper right -->
-    <div class="top-banner">
-        <h1>BearEstate</h1>
+<div class="top-banner">
+<h1>BearEstate</h1>
 
-        <!-- Right side: bear + login/signup -->
-        <div class="nav-right">
-            <img
-                src="{% static 'images/bear.png' %}"
-                alt="BearEstate polar bear mascot"
-                class="nav-bear"
-                data-darkreader-ignore
-            >
-            <div class="nav-buttons">
-                <a href="#" class="btn-login" id="loginBtn">Log In</a>
-                <a href="#" class="btn-signup" id="signupBtn">Sign Up</a>
-            </div>
-        </div>
-    </div>
+<div class="nav-right">
+<img src="{% static 'images/bear.png' %}" class="nav-bear" alt="BearEstate polar bear mascot">
 
-    <!-- Triangle (below banner, grows horizontally on scroll) -->
-    <div id="triangle" class="triangle"></div>
+<div class="nav-buttons">
+<a href="#" class="btn-login" id="loginBtn">Log In</a>
+<a href="#" class="btn-signup" id="signupBtn">Sign Up</a>
+</div>
+</div>
+</div>
 
-    <!-- Hero Section -->
-    <section class="hero hero-bg">
-        <img
-            src="{% static 'images/college_snow.jpg' %}"
-            alt=""
-            class="hero-bg-img"
-            aria-hidden="true"
-            data-darkreader-ignore
-        >
+<div id="triangle" class="triangle"></div>
 
-        <div class="hero-grid">
-            <div class="hero-inner">
+<section class="hero hero-bg">
 
-                <p class="eyebrow">Built for Students</p>
-                <p class="hero-sub">Find housing. Post subleases.<br/>Message roommates directly.</p>
+<img src="{% static 'images/college_snow.jpg' %}" class="hero-bg-img" aria-hidden="true">
 
-                <p class="hero-tagline">College Housing Network — Nationwide</p>
+<div class="hero-grid">
+<div class="hero-inner">
 
-                <!-- Mini Stats -->
-                <div class="mini-stats">
-                    <div class="mstat"><strong>50 States</strong><span>Nationwide Coverage</span></div>
-                    <div class="mstat-dot"></div>
-                    <div class="mstat"><strong>Live Chat</strong><span>Direct Messaging</span></div>
-                </div>
+<p class="eyebrow">Built for Students</p>
+<p class="hero-sub">Find housing. Post subleases.<br>Message roommates directly.</p>
+<p class="hero-tagline">College Housing Network — Nationwide</p>
 
-                <!-- Search Bar -->
-                <div class="search-bar" role="search" aria-label="Housing search">
-                    <div class="search-field">
-                        <label for="searchLocation">Location</label>
-                        <input id="searchLocation" type="text" placeholder="City, neighborhood, or ZIP…" />
-                    </div>
+<div class="mini-stats">
+<div class="mstat"><strong>50 States</strong><span>Nationwide Coverage</span></div>
+<div class="mstat-dot"></div>
+<div class="mstat"><strong>Live Chat</strong><span>Direct Messaging</span></div>
+</div>
 
-                    <div class="search-divider"></div>
+<form class="search-bar" method="get">
 
-                    <!-- Rent vs Buy -->
-                    <div class="search-field">
-                        <label for="searchIntent">Looking to</label>
-                        <select id="searchIntent">
-                            <option value="rent" selected>Rent</option>
-                            <option value="buy">Buy</option>
-                        </select>
-                    </div>
+<div class="search-field">
+<label for="searchLocation">Location</label>
+<input id="searchLocation" name="location" type="text" placeholder="City, neighborhood, or ZIP…" value="{{ selected_location }}">
+</div>
 
-                    <div class="search-divider"></div>
+<div class="search-divider"></div>
 
-                    <div class="search-field">
-                        <label for="searchType">Type</label>
-                        <select id="searchType">
-                            <option>Any Type</option>
-                            <option>House</option>
-                            <option>Apartment</option>
-                            <option>Condo</option>
-                            <option>Townhouse</option>
-                        </select>
-                    </div>
+<div class="search-field">
+<label for="searchIntent">Looking to</label>
+<select id="searchIntent" name="intent">
+<option value="rent" {% if selected_intent != "buy" %}selected{% endif %}>Rent</option>
+<option value="buy" {% if selected_intent == "buy" %}selected{% endif %}>Buy</option>
+</select>
+</div>
 
-                    <div class="search-divider"></div>
+<div class="search-divider"></div>
 
-                    <!-- Budget changes based on Rent vs Buy -->
-                    <div class="search-field">
-                        <label for="searchBudget" id="budgetLabel">Monthly Rent</label>
-                        <select id="searchBudget">
-                            <!-- Default: RENT options -->
-                            <option value="any">Any Rent</option>
-                            <option value="0-900">Under $900</option>
-                            <option value="900-1400">$900 – $1,400</option>
-                            <option value="1400-2000">$1,400 – $2,000</option>
-                            <option value="2000-999999">$2,000+</option>
-                        </select>
-                    </div>
+<div class="search-field">
+<label for="searchType">Type</label>
+<select id="searchType" name="type">
+<option value="" {% if not selected_type %}selected{% endif %}>Any Type</option>
+<option value="house" {% if selected_type == "house" %}selected{% endif %}>House</option>
+<option value="apartment" {% if selected_type == "apartment" %}selected{% endif %}>Apartment</option>
+<option value="condo" {% if selected_type == "condo" %}selected{% endif %}>Condo</option>
+<option value="townhouse" {% if selected_type == "townhouse" %}selected{% endif %}>Townhouse</option>
+</select>
+</div>
 
-                    <button class="search-btn" id="searchBtn" type="button">Search →</button>
-                </div>
+<div class="search-divider"></div>
 
-            </div>
-        </div>
-    </section>
+<div class="search-field">
+<label for="searchBudget" id="budgetLabel">Monthly Rent</label>
+<select id="searchBudget" name="budget">
+<option value="any" {% if selected_budget == "any" %}selected{% endif %}>Any Rent</option>
+<option value="0-900" {% if selected_budget == "0-900" %}selected{% endif %}>Under $900</option>
+<option value="900-1400" {% if selected_budget == "900-1400" %}selected{% endif %}>$900 – $1,400</option>
+<option value="1400-2000" {% if selected_budget == "1400-2000" %}selected{% endif %}>$1,400 – $2,000</option>
+<option value="2000-999999" {% if selected_budget == "2000-999999" %}selected{% endif %}>$2,000+</option>
+</select>
+</div>
 
-    <!-- Student Features -->
-    <section class="student-features">
-        <div class="feature">
-            <h3>Post Your Place</h3>
-            <p>Subleasing? Looking for roommates? List it in minutes.</p>
-        </div>
+<button class="search-btn" type="submit">Search →</button>
 
-        <div class="feature">
-            <h3>Message Instantly</h3>
-            <p>Talk directly with homeowners and other students — no middlemen.</p>
-        </div>
+</form>
 
-        <div class="feature">
-            <h3>Student Focused</h3>
-            <p>Designed for students, open to all.</p>
-        </div>
-    </section>
+</div>
+</div>
+</section>
 
-    <!-- Login / Signup Modal -->
-    <div class="modal-backdrop" id="modalBackdrop">
-        <div class="modal">
-            <button class="modal-close" id="modalClose">✕</button>
-            <div class="modal-tabs">
-                <button class="tab active" id="tabLogin">Log In</button>
-                <button class="tab" id="tabSignup">Sign Up</button>
-            </div>
-            <div class="form-panel" id="formLogin">
-                <h2 class="modal-title">Welcome back</h2>
-                <p class="modal-sub">Log in to see saved properties</p>
-                <div class="field"><label>Email</label><input type="email" placeholder="youremail@example.com" /></div>
-                <div class="field"><label>Password</label><input type="password" placeholder="••••••••" /></div>
-                <a href="#" class="forgot">Forgot password?</a>
-                <button class="btn-submit">Log In</button>
-                <p class="switch-text">No account? <a href="#" id="switchToSignup">Sign up</a></p>
-            </div>
-            <div class="form-panel hidden" id="formSignup">
-                <h2 class="modal-title">Create account</h2>
-                <p class="modal-sub">Join thousands of students finding housing</p>
-                <div class="field"><label>Full Name</label><input type="text" placeholder="Jane Smith" /></div>
-                <div class="field"><label>Email</label><input type="email" placeholder="you@example.com" /></div>
-                <div class="field"><label>Password</label><input type="password" placeholder="Create a password" /></div>
-                <button class="btn-submit">Create Account</button>
-                <p class="switch-text">Already have an account? <a href="#" id="switchToLogin">Log in</a></p>
-            </div>
-        </div>
-    </div>
+<!-- SEARCH RESULTS SECTION  -->
 
-    <!-- Triangle Scroll Script -->
-    <script>
-        window.addEventListener("scroll", function() {
-            let scrollY = window.scrollY;
-            let triangle = document.getElementById("triangle");
-            let newSize = 350 + scrollY * 0.6;
-            triangle.style.borderLeft = newSize + "px solid #1a7a8a";
-            triangle.style.borderBottom = "60px solid transparent";
-        });
-    </script>
+<section class="property-results">
 
-    <!-- Rent/Buy Budget Swap Script -->
-    <script>
-        const searchIntent = document.getElementById('searchIntent');
-        const budgetLabel  = document.getElementById('budgetLabel');
-        const searchBudget = document.getElementById('searchBudget');
+<h2>Search Results</h2>
+<p>{{ properties|length }} property{{ properties|length|pluralize }} found</p>
 
-        const rentOptions = [
-            { value: 'any', label: 'Any Rent' },
-            { value: '0-900', label: 'Under $900' },
-            { value: '900-1400', label: '$900 – $1,400' },
-            { value: '1400-2000', label: '$1,400 – $2,000' },
-            { value: '2000-999999', label: '$2,000+' },
-        ];
+{% if properties %}
 
-        const buyOptions = [
-            { value: 'any', label: 'Any Price' },
-            { value: '0-300000', label: 'Under $300k' },
-            { value: '300000-600000', label: '$300k – $600k' },
-            { value: '600000-1000000', label: '$600k – $1M' },
-            { value: '1000000-999999999', label: '$1M+' },
-        ];
+<div class="property-grid">
 
-        function setSelectOptions(selectEl, optionsList) {
-            selectEl.innerHTML = '';
-            for (const opt of optionsList) {
-                const optionEl = document.createElement('option');
-                optionEl.value = opt.value;
-                optionEl.textContent = opt.label;
-                selectEl.appendChild(optionEl);
-            }
-        }
+{% for property in properties %}
 
-        function updateBudgetOptions() {
-            const mode = searchIntent.value;
+<div class="property-card">
+    <h3>{{ property.title }}</h3>
+    <p><strong>Location:</strong> {{ property.location }}</p>
+    <p><strong>Type:</strong> {{ property.property_type|title }}</p>
+    <p><strong>Listing:</strong> {{ property.listing_type|title }}</p>
+    <p><strong>Price:</strong> ${{ property.price }}</p>
+    <p>{{ property.description }}</p>
+</div>
 
-            if (mode === 'rent') {
-                budgetLabel.textContent = 'Monthly Rent';
-                setSelectOptions(searchBudget, rentOptions);
-            } else {
-                budgetLabel.textContent = 'Purchase Price';
-                setSelectOptions(searchBudget, buyOptions);
-            }
-        }
+{% endfor %}
 
-        searchIntent.addEventListener('change', updateBudgetOptions);
-        updateBudgetOptions();
+</div>
 
-        document.getElementById('searchBtn').addEventListener('click', () => {
-            const location = document.getElementById('searchLocation').value;
-            const mode = searchIntent.value;
-            const type = document.getElementById('searchType').value;
-            const budget = searchBudget.value;
+{% else %}
 
-            console.log({ location, mode, type, budget });
-        });
-    </script>
+<p>No properties match your search. Try a different location, type, or price range.</p>
 
-    <!-- Modal Script -->
-    <script>
-        const backdrop  = document.getElementById('modalBackdrop');
-        const loginBtn  = document.getElementById('loginBtn');
-        const signupBtn = document.getElementById('signupBtn');
-        const closeBtn  = document.getElementById('modalClose');
-        const tabLogin  = document.getElementById('tabLogin');
-        const tabSignup = document.getElementById('tabSignup');
-        const formLogin  = document.getElementById('formLogin');
-        const formSignup = document.getElementById('formSignup');
-        const switchSU   = document.getElementById('switchToSignup');
-        const switchLI   = document.getElementById('switchToLogin');
+{% endif %}
 
-        function showModal(mode) { backdrop.classList.add('active'); setTab(mode); }
-        function hideModal()     { backdrop.classList.remove('active'); }
-        function setTab(mode) {
-            const isLogin = mode === 'login';
-            tabLogin.classList.toggle('active', isLogin);
-            tabSignup.classList.toggle('active', !isLogin);
-            formLogin.classList.toggle('hidden', !isLogin);
-            formSignup.classList.toggle('hidden', isLogin);
-        }
+</section>
 
-        loginBtn.addEventListener('click',  e => { e.preventDefault(); showModal('login');  });
-        signupBtn.addEventListener('click', e => { e.preventDefault(); showModal('signup'); });
-        closeBtn.addEventListener('click',  hideModal);
-        backdrop.addEventListener('click',  e => { if (e.target === backdrop) hideModal(); });
-        tabLogin.addEventListener('click',  () => setTab('login'));
-        tabSignup.addEventListener('click', () => setTab('signup'));
-        switchSU.addEventListener('click',  e => { e.preventDefault(); setTab('signup'); });
-        switchLI.addEventListener('click',  e => { e.preventDefault(); setTab('login');  });
-    </script>
+
+<section class="student-features">
+<div class="feature">
+<h3>Post Your Place</h3>
+<p>Subleasing? Looking for roommates? List it in minutes.</p>
+</div>
+
+<div class="feature">
+<h3>Message Instantly</h3>
+<p>Talk directly with homeowners and other students — no middlemen.</p>
+</div>
+
+<div class="feature">
+<h3>Student Focused</h3>
+<p>Designed for students, open to all.</p>
+</div>
+</section>
+
+<script>
+window.addEventListener("scroll", function(){
+let scrollY = window.scrollY
+let triangle = document.getElementById("triangle")
+let newSize = 350 + scrollY * 0.6
+triangle.style.borderLeft = newSize + "px solid #1a7a8a"
+triangle.style.borderBottom = "60px solid transparent"
+})
+</script>
 
 </body>
 </html>
