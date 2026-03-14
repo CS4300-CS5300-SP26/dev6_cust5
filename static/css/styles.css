@@ -1,0 +1,459 @@
+/* ── Reset & Variables ─────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --sky:        #daeeff;
+    --sky-mid:    #b8dcf5;
+    --blue:       #5dd1e3;
+    --blue-dark:  #2d6a9f;
+    --teal-light: #2aa0b4;
+    --teal-dark:  #1a7a8a;
+    --text:       #1c3a55;
+    --text-muted: #5b85a8;
+    --white:      #ffffff;
+    --border:     rgba(74, 144, 196, 0.18);
+    --radius:     12px;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body:    'DM Sans', sans-serif;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-body);
+    color: var(--text);
+    overflow-x: hidden;
+    background-color: #ffffff;
+}
+
+/* ── Fixed Banner ──────────────────────────────── */
+.top-banner {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    height: 60px;
+    background-color: var(--blue);
+    z-index: 1002;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+}
+
+/*Building out a darker theme for search tools*/
+/*Retooling Georges CSS to a single declare point*/
+.top-banner--sticky{
+    position: sticky;
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    background-color: transparent;
+}
+
+.top-banner h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.8rem;
+    letter-spacing: 2px;
+    color: white;
+}
+
+/*Backup dark banner*/
+.top-banner--sticky h1 {
+    color: var(--teal-dark);
+    font-size: 2rem;
+    letter-spacing:0.04em;
+}
+
+
+/* ── Nav Buttons ───────────────────────────────── */
+.nav-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.btn-login {
+    text-decoration: none;
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--white);
+    background: transparent;
+    padding: 0.45rem 1.2rem;
+    border-radius: 50px;
+    border: 1.5px solid white;
+    transition: background 0.2s;
+    cursor: pointer;
+}
+.btn-login:hover { background: rgba(255,255,255,0.2); }
+
+.top-banner--sticky .btn-login{
+    color: var(--teal-dark);
+    border-color: var(--teal-dark);
+    border-radius: 6px;
+}
+
+.top-banner--sticky .btn-login:hover { background: var(--teal-dark); color: var(--white); }
+
+.btn-signup {
+    text-decoration: none;
+    font-family: var(--font-body);
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--blue);
+    background: var(--white);
+    padding: 0.45rem 1.2rem;
+    border-radius: 50px;
+    border: 1.5px solid white;
+    transition: opacity 0.2s;
+    cursor: pointer;
+}
+.btn-signup:hover { opacity: 0.85; }
+
+/* Search page: teal filled signup button */
+/*Written by Claude*/
+.top-banner--sticky .btn-signup {
+    background: var(--teal-dark);
+    color: var(--white);
+    border-color: var(--teal-dark);
+    border-radius: 6px;
+}
+.top-banner--sticky .btn-signup:hover { background: #0f5560; border-color: #0f5560; opacity: 1; }
+
+/* ── Expanding Triangle ────────────────────────── */
+.triangle {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-left: 350px solid var(--teal-dark);
+    border-bottom: 60px solid transparent;
+    z-index: 999;
+    transition: border-left 0.1s ease;
+}
+
+/* ── Hero Section ──────────────────────────────── */
+.hero {
+    margin-top: 60px;
+    padding: 80px 3rem 40px;
+}
+
+.hero-inner {
+    max-width: 620px;
+    animation: fadeUp 1s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.eyebrow {
+    font-size: 0.75rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--blue-dark);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.hero-sub {
+    font-size: 1rem;
+    font-weight: 300;
+    line-height: 1.75;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+}
+
+.hero-tagline {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: var(--text);
+}
+
+/* ── Bear Image ────────────────────────────────── */
+.bear-image {
+    display: block;
+    width: 380px;
+    max-width: 100%;
+    margin-bottom: 2rem;
+}
+
+/* ── Mini Stats ────────────────────────────────── */
+.mini-stats {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    margin-bottom: 2rem;
+}
+
+.mstat { display: flex; flex-direction: column; gap: 0.15rem; }
+
+.mstat strong {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1;
+}
+
+.mstat span {
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.mstat-dot {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--sky-mid);
+    flex-shrink: 0;
+}
+
+/* ── Search Bar ────────────────────────────────── */
+.search-bar {
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(--border);
+    border-radius: 16px;
+    padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 8px 40px rgba(74,144,196,0.10);
+    max-width: 620px;
+}
+
+/*Creating a screen to screen search bar*/
+/*In the search page we need a larger and differently placed search field*/
+.search-bar--wide {
+    max-width: 100%;
+    border-radius: var(--radius);
+    overflow: hidden;
+    padding: 0;
+}
+
+.search-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 0.8rem;
+}
+
+.search-field label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.search-field input,
+.search-field select {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 400;
+    color: var(--text);
+    width: 100%;
+    cursor: pointer;
+}
+.search-field select { -webkit-appearance: none; appearance: none; }
+
+.search-divider {
+    width: 1px;
+    height: 34px;
+    background: rgba(--border);
+    flex-shrink: 0;
+}
+
+.search-btn {
+    background: var(--teal-dark);
+    color: var(--white);
+    border: none;
+    border-radius: 12px;
+    padding: 0.9rem 1.4rem;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    margin-left: 0.5rem;
+    transition: background 0.2s, transform 0.2s;
+    flex-shrink: 0;
+}
+.search-btn:hover { background: var(--blue-dark); transform: scale(1.03); }
+
+/* ── Map Section ───────────────────────────────── */
+.map-section {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: #ffffff;
+}
+
+.map-section img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+}
+
+/* ── Modal ─────────────────────────────────────── */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(180,215,240,0.45);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+.modal-backdrop.active { opacity: 1; pointer-events: all; }
+
+.modal {
+    position: relative;
+    background: rgba(255,255,255,0.96);
+    border: 1px solid rgba(--border);
+    border-radius: 24px;
+    width: 100%;
+    max-width: 420px;
+    padding: 2.5rem 2.5rem 2rem;
+    color: var(--text);
+    box-shadow: 0 20px 60px rgba(74,144,196,0.18);
+    transform: translateY(24px);
+    transition: transform 0.35s cubic-bezier(0.22,1,0.36,1);
+}
+.modal-backdrop.active .modal { transform: translateY(0); }
+
+.modal-close {
+    position: absolute;
+    top: 1.1rem; right: 1.3rem;
+    background: none; border: none;
+    font-size: 1rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.modal-close:hover { color: var(--text); }
+
+.modal-tabs {
+    display: flex;
+    background: var(--sky);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 1.8rem;
+}
+
+.tab {
+    flex: 1; border: none;
+    background: transparent;
+    border-radius: 9px;
+    padding: 0.6rem 0;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.tab.active {
+    background: var(--white);
+    color: var(--text);
+    box-shadow: 0 2px 8px rgba(74,144,196,0.12);
+}
+
+.modal-title {
+    font-family: var(--font-display);
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+}
+
+.modal-sub {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    font-weight: 300;
+}
+
+.field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+
+.field label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.field input {
+    border: 1.5px solid var(--sky-mid);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    color: var(--text);
+    outline: none;
+    background: rgba(255,255,255,0.8);
+    transition: border-color 0.2s;
+}
+.field input:focus { border-color: var(--blue); }
+
+.forgot {
+    display: block;
+    text-align: right;
+    font-size: 0.8rem;
+    color: var(--blue-dark);
+    text-decoration: none;
+    margin-bottom: 1.2rem;
+    margin-top: -0.3rem;
+}
+.forgot:hover { text-decoration: underline; }
+
+.btn-submit {
+    width: 100%;
+    padding: 0.9rem;
+    border: none;
+    border-radius: 12px;
+    background: var(--blue-dark);
+    color: var(--white);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+    margin-bottom: 1.1rem;
+}
+.btn-submit:hover { background: var(--blue); transform: translateY(-1px); }
+
+.switch-text { text-align: center; font-size: 0.84rem; color: var(--text-muted); }
+.switch-text a { color: var(--blue-dark); text-decoration: none; font-weight: 500; }
+.switch-text a:hover { text-decoration: underline; }
+
+.hidden { display: none !important; }
+
+/* ── Animations ────────────────────────────────── */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 640px) {
+    .hero { padding: 5rem 1.5rem 2rem; }
+    .search-bar { flex-direction: column; align-items: stretch; padding: 1rem; }
+    .search-divider { display: none; }
+    .search-btn { margin: 0.5rem 0 0; padding: 0.9rem; }
+    .mini-stats { flex-wrap: wrap; gap: 1rem; }
+    .modal { margin: 1rem; padding: 2rem 1.5rem; }
+}
