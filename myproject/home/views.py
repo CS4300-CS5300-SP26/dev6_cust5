@@ -13,12 +13,14 @@ def index(request):
     if location:
         properties = properties.filter(location__icontains=location)
 
+
+
     if listing_type in ["rent", "buy"]:
         properties = properties.filter(listing_type=listing_type)
 
     if property_type and property_type.lower() != "any type":
         properties = properties.filter(property_type=property_type.lower())
-        
+
 # Apply price range filter selected by the user
     if price_range and price_range != "any":
         try:
@@ -26,6 +28,8 @@ def index(request):
             properties = properties.filter(price__gte=min_price, price__lte=max_price)
         except ValueError:
             pass
+    
+    result_count = properties.count()
 
     context = {
         "properties": properties,
