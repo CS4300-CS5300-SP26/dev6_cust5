@@ -18,7 +18,8 @@ def index(request):
 
     if property_type and property_type.lower() != "any type":
         properties = properties.filter(property_type=property_type.lower())
-
+        
+# Apply price range filter selected by the user
     if price_range and price_range != "any":
         try:
             min_price, max_price = map(int, price_range.split("-"))
