@@ -4,32 +4,41 @@ from .rentcast_api import get_properties
 
 
 def index(request):
+
+    # Start with all database properties
     properties = Property.objects.all()
 
+    # Get search parameters
     location = request.GET.get("location", "").strip()
     listing_type = request.GET.get("intent", "").strip()
     property_type = request.GET.get("type", "").strip()
     price_range = request.GET.get("budget", "").strip()
 
-    # External API properties
+    # Container for API results
     api_properties = []
 
+    # -------- Location Filter --------
     if location:
         properties = properties.filter(location__icontains=location)
 
-        # Fetch properties from RentCast API
+    # -------- RentCast API Call --------
+    if location:
         try:
             api_properties = get_properties(location)
-        except Exception:
+            print("API Results:", api_properties)  # Debug check
+        except Exception as e:
+            print("API Error:", e)
             api_properties = []
 
+    # -------- Listing Type Filter --------
     if listing_type in ["rent", "buy"]:
         properties = properties.filter(listing_type=listing_type)
 
+    # -------- Property Type Filter --------
     if property_type and property_type.lower() != "any type":
         properties = properties.filter(property_type=property_type.lower())
 
-    # Apply price range filter selected by the user
+    # -------- Price Range Filter --------
     if price_range and price_range != "any":
         try:
             min_price, max_price = map(int, price_range.split("-"))
@@ -37,8 +46,10 @@ def index(request):
         except ValueError:
             pass
 
+    # Count database results
     result_count = properties.count()
 
+    # Send everything to template
     context = {
         "properties": properties,
         "api_properties": api_properties,
