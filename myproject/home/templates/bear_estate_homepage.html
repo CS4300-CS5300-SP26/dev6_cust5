@@ -3,114 +3,171 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BearEstate</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BearEstate</title>
+
+
 
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/css/uikit.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit-icons.min.js"></script>
+
 </head>
 
 <body>
 
-    <!-- Banner -->
-    <div class="top-banner">
-        <h1>BearEstate</h1>
-        <div class="nav-right">
-            <img src="{% static 'images/bear.png' %}" alt="BearEstate polar bear mascot" class="nav-bear" data-darkreader-ignore>
-            <div class="nav-buttons">
-                {% if user.is_authenticated %}
-                    <span class="btn-login" style="cursor:default;">Hi, {{ user.username }}</span>
-                    <form method="POST" action="{% url 'logout' %}" style="display:inline;">
-                        {% csrf_token %}
-                      <button type="submit" class="btn-signup" style="border:none; cursor:pointer;">Log Out</button>
-                    </form>
-                {% else %}
-                    <a href="#" class="btn-login" id="loginBtn">Log In</a>
-                    <a href="#" class="btn-signup" id="signupBtn">Sign Up</a>
-                {% endif %}
-            </div>
-        </div>
-    </div>
 
-    <!-- Triangle -->
-    <div id="triangle" class="triangle"></div>
+<div class="top-banner">
+<h1>BearEstate</h1>
 
-    <!-- Hero Section -->
-    <section class="hero hero-bg">
-        <img src="{% static 'images/college_snow.jpg' %}" alt="" class="hero-bg-img" aria-hidden="true" data-darkreader-ignore>
-        <div class="hero-grid">
-            <div class="hero-inner">
-                <p class="eyebrow">Built for Students</p>
-                <p class="hero-sub">Find housing. Post subleases.<br/>Message roommates directly.</p>
-                <p class="hero-tagline">College Housing Network — Nationwide</p>
+<div class="nav-right">
+<img src="{% static 'images/bear.png' %}" class="nav-bear" alt="BearEstate polar bear mascot">
 
-                <div class="mini-stats">
-                    <div class="mstat"><strong>50 States</strong><span>Nationwide Coverage</span></div>
-                    <div class="mstat-dot"></div>
-                    <div class="mstat"><strong>Live Chat</strong><span>Direct Messaging</span></div>
-                </div>
+<div class="nav-buttons">
+<a href="#" class="btn-login">Log In</a>
+<a href="#" class="btn-signup">Sign Up</a>
+</div>
+</div>
+</div>
 
-                <div class="search-bar" role="search" aria-label="Housing search">
-                    <div class="search-field">
-                        <label for="searchLocation">Location</label>
-                        <input id="searchLocation" type="text" placeholder="City, neighborhood, or ZIP…" />
-                    </div>
-                    <div class="search-divider"></div>
-                    <div class="search-field">
-                        <label for="searchIntent">Looking to</label>
-                        <select id="searchIntent">
-                            <option value="rent" selected>Rent</option>
-                            <option value="buy">Buy</option>
-                        </select>
-                    </div>
-                    <div class="search-divider"></div>
-                    <div class="search-field">
-                        <label for="searchType">Type</label>
-                        <select id="searchType">
-                            <option>Any Type</option>
-                            <option>House</option>
-                            <option>Apartment</option>
-                            <option>Condo</option>
-                            <option>Townhouse</option>
-                        </select>
-                    </div>
-                    <div class="search-divider"></div>
-                    <div class="search-field">
-                        <label for="searchBudget" id="budgetLabel">Monthly Rent</label>
-                        <select id="searchBudget">
-                            <option value="any">Any Rent</option>
-                            <option value="0-900">Under $900</option>
-                            <option value="900-1400">$900 – $1,400</option>
-                            <option value="1400-2000">$1,400 – $2,000</option>
-                            <option value="2000-999999">$2,000+</option>
-                        </select>
-                    </div>
-                    <button class="search-btn" id="searchBtn" type="button">Search →</button>
-                </div>
-            </div>
-        </div>
-    </section>
+<div id="triangle" class="triangle"></div>
 
-    <!-- Student Features -->
-    <section class="student-features">
-        <div class="feature">
-            <h3>Post Your Place</h3>
-            <p>Subleasing? Looking for roommates? List it in minutes.</p>
-        </div>
-        <div class="feature">
-            <h3>Message Instantly</h3>
-            <p>Talk directly with homeowners and other students — no middlemen.</p>
-        </div>
-        <div class="feature">
-            <h3>Student Focused</h3>
-            <p>Designed for students, open to all.</p>
-        </div>
-    </section>
+<section class="hero hero-bg">
 
+<img src="{% static 'images/college_snow.jpg' %}" class="hero-bg-img">
+
+<div class="hero-grid">
+<div class="hero-inner">
+
+<p class="eyebrow">Built for Students</p>
+<p class="hero-sub">Find housing. Post subleases.<br>Message roommates directly.</p>
+<p class="hero-tagline">College Housing Network — Nationwide</p>
+
+<form class="search-bar" method="get">
+
+<div class="search-field">
+<label>Location</label>
+<input name="location" type="text" placeholder="City or ZIP" value="{{ selected_location }}">
+</div>
+
+<div class="search-divider"></div>
+
+<div class="search-field">
+<label>Looking to</label>
+<select name="intent">
+<option value="rent" {% if selected_intent != "buy" %}selected{% endif %}>Rent</option>
+<option value="buy" {% if selected_intent == "buy" %}selected{% endif %}>Buy</option>
+</select>
+</div>
+
+<div class="search-divider"></div>
+
+<div class="search-field">
+<label>Type</label>
+<select name="type">
+<option value="" {% if not selected_type %}selected{% endif %}>Any Type</option>
+<option value="house" {% if selected_type == "house" %}selected{% endif %}>House</option>
+<option value="apartment" {% if selected_type == "apartment" %}selected{% endif %}>Apartment</option>
+<option value="condo" {% if selected_type == "condo" %}selected{% endif %}>Condo</option>
+<option value="townhouse" {% if selected_type == "townhouse" %}selected{% endif %}>Townhouse</option>
+</select>
+</div>
+
+<div class="search-divider"></div>
+
+<div class="search-field">
+<label>Monthly Rent</label>
+<select name="budget">
+<option value="any">Any Price</option>
+<option value="0-900">Under $900</option>
+<option value="900-1400">$900 – $1,400</option>
+<option value="1400-2000">$1,400 – $2,000</option>
+<option value="2000-999999">$2,000+</option>
+</select>
+</div>
+
+<button class="search-btn" type="submit">Search →</button>
+
+</form>
+
+</div>
+</div>
+</section>
+
+<section class="property-results">
+
+<h2>Search Results</h2>
+
+<p>
+<strong>{{ properties|length }}</strong>
+propert{{ properties|length|pluralize:"y,ies" }} found
+</p>
+
+{% if properties %}
+
+<div class="property-grid">
+
+{% for property in properties %}
+
+<div class="property-card">
+<h3>{{ property.title }}</h3>
+<p><strong>Location:</strong> {{ property.location }}</p>
+<p><strong>Type:</strong> {{ property.property_type|title }}</p>
+<p><strong>Listing:</strong> {{ property.listing_type|title }}</p>
+<p><strong>Price:</strong> ${{ property.price }}</p>
+<p>{{ property.description }}</p>
+</div>
+
+{% endfor %}
+
+</div>
+
+{% endif %}
+
+<!-- API RESULTS -->
+
+{% if api_properties %}
+
+<h2>Additional Listings</h2>
+
+<div class="property-grid">
+
+{% for property in api_properties %}
+
+<div class="property-card">
+
+<h3>{{ property.formattedAddress }}</h3>
+
+<p><strong>City:</strong> {{ property.city }}</p>
+
+<p><strong>Type:</strong> {{ property.propertyType }}</p>
+
+<p><strong>Bedrooms:</strong> {{ property.bedrooms }}</p>
+
+<p><strong>Bathrooms:</strong> {{ property.bathrooms }}</p>
+
+<p><strong>Size:</strong> {{ property.squareFootage }} sqft</p>
+
+<p><strong>Year Built:</strong> {{ property.yearBuilt }}</p>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+{% endif %}
+
+</section>
+
+
+
+    
+
+   
     <!-- Login / Signup Modal -->
     <div class="modal-backdrop" id="modalBackdrop">
         <div class="modal">
@@ -279,6 +336,7 @@
         {% if show_login_modal %}  showModal('login');  {% endif %}
         {% if show_signup_modal %} showModal('signup'); {% endif %}
     </script>
+
 
 </body>
 </html>
