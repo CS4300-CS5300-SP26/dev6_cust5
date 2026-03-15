@@ -1,0 +1,67 @@
+#give the workflow a readable name in the GitHub Actions tab
+name: AI Code Review
+
+#run this workflow whenever a pull request is opened, updated, or reopened
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+#allow the workflow to read the repo and write pull request comments
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai_code_review:
+    #use a GitHub-hosted Ubuntu runner
+    runs-on: ubuntu-latest
+
+    steps:
+      #check out the full repository history so git diff works correctly
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      #install Python on the runner
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      #install the OpenAI library used by the review script
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openai
+
+      #fetch the base branch and save the pull request diff into diff.txt
+      - name: Build pull request diff
+        run: |
+          git fetch origin "${{ github.event.pull_request.base.ref }}" --depth=1
+          git diff --unified=3 origin/${{ github.event.pull_request.base.ref }}...HEAD > diff.txt
+
+      #run the Python review script using the GitHub secret API key
+      - name: Run AI code review
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-5.1-codex-mini
+        run: |
+          python ai-code-review.py
+
+      #upload the generated markdown feedback as a workflow artifact
+      - name: Upload feedback artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-code-review-feedback
+          path: feedback.md
+
+      #post the generated feedback onto the pull request as a comment
+      - name: Comment on pull request
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          file-path: feedback.md
+          comment-tag: ai-code-review
