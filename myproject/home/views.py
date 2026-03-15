@@ -1,44 +1,53 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login
 from .models import Property
 from .rentcast_api import get_properties
+from home.forms import CustomRegisterForm
 
 
 def index(request):
 
-    # Start with all database properties
+    context = {}
+
+    # ---------------- LOGIN HANDLING ----------------
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+            return redirect('bear_estate_homepage')
+        else:
+            context['login_error'] = 'Invalid username or password.'
+            context['show_login_modal'] = True
+
+    # ---------------- PROPERTY SEARCH ----------------
     properties = Property.objects.all()
 
-    # Get search parameters
     location = request.GET.get("location", "").strip()
     listing_type = request.GET.get("intent", "").strip()
     property_type = request.GET.get("type", "").strip()
     price_range = request.GET.get("budget", "").strip()
 
-    # Container for API results
     api_properties = []
 
-    # -------- Location Filter --------
     if location:
         properties = properties.filter(location__icontains=location)
 
-    # -------- RentCast API Call --------
-    if location:
         try:
             api_properties = get_properties(location)
-            print("API Results:", api_properties)  # Debug check
         except Exception as e:
             print("API Error:", e)
             api_properties = []
 
-    # -------- Listing Type Filter --------
     if listing_type in ["rent", "buy"]:
         properties = properties.filter(listing_type=listing_type)
 
-    # -------- Property Type Filter --------
     if property_type and property_type.lower() != "any type":
         properties = properties.filter(property_type=property_type.lower())
 
-    # -------- Price Range Filter --------
     if price_range and price_range != "any":
         try:
             min_price, max_price = map(int, price_range.split("-"))
@@ -46,18 +55,33 @@ def index(request):
         except ValueError:
             pass
 
-    # Count database results
-    result_count = properties.count()
-
-    # Send everything to template
-    context = {
+    context.update({
         "properties": properties,
         "api_properties": api_properties,
         "selected_location": location,
         "selected_intent": listing_type,
         "selected_type": property_type,
         "selected_budget": price_range,
-        "result_count": result_count,
-    }
+        "result_count": properties.count(),
+    })
 
     return render(request, "bear_estate_homepage.html", context)
+
+
+def register(request):
+    if request.method == 'POST':
+        form = CustomRegisterForm(request.POST)
+
+        if form.is_valid():
+            form.save()
+            return redirect('bear_estate_homepage')
+        else:
+            errors = [error for field in form for error in field.errors]
+            errors += list(form.non_field_errors())
+
+            return render(request, 'bear_estate_homepage.html', {
+                'show_signup_modal': True,
+                'register_errors': errors,
+            })
+
+    return redirect('bear_estate_homepage')
