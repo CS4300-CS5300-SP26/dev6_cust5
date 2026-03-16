@@ -2,21 +2,54 @@ from django.shortcuts import render
 from .models import RoommatePost
 from rest_framework import viewsets
 from .serializers import RoommatePostSerializer
-
-from django.shortcuts import render, redirect
+from .forms import CustomRegisterForm, RoommatePostForm
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login
 from .models import Property
 from .rentcast_api import get_properties
-from home.forms import CustomRegisterForm
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
 #-------------------------------HTML views--------------------------------#
 # Home page
 def index(request):
     return render(request, "bear_estate_homepage.html")
 
-#Search for Roommates
 def search(request):
-    return render(request, 'search.html')
+    return render(request, "search.html")
+#Search for Roommates
+def roommate_list(request):
+    posts = RoommatePost.objects.all().order_by('-date')
+    return render(request, 'roommate_postings_view.html', {'posts': posts})
 
+@login_required
+def roommate_create(request):
+    if request.method == 'POST':
+        form = RoommatePostForm(request.POST)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.user = request.user
+            post.save()
+            return redirect('roommate_list')
+    else:
+        form = RoommatePostForm(initial={'date': timezone.now().date()})
+    return render(request, 'roommate_create.html', {'form': form})
+
+@login_required
+def roommate_close(request, post_id):
+    post = get_object_or_404(RoommatePost, id=post_id, user=request.user)
+    if request.method == 'POST':
+        post.status = 'closed'
+        post.save()
+        return redirect('roommate_list')
+    return redirect('roommate_list')
+
+@login_required
+def roommate_delete(request, post_id):
+    post = get_object_or_404(RoommatePost, id=post_id, user=request.user)  # ensures only owner can delete
+    if request.method == 'POST':
+        post.delete()
+        return redirect('roommate_list')
+    return redirect('roommate_list')
 #-------------------------------API views--------------------------------#
 # Roommate Post API
 class RoommatePostViewSet(viewsets.ModelViewSet):
@@ -82,7 +115,7 @@ def index(request):
 
     if property_type and property_type.lower() != "any type":
         properties = properties.filter(property_type=property_type.lower())
-        
+
     if min_price is not None and max_price is not None:
         properties = properties.filter(price__gte=min_price, price__lte=max_price)
 
