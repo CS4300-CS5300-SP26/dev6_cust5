@@ -4,8 +4,7 @@ name: Django Tests
 #run this workflow on pushes to any branch and on pull requests into pre-main or main
 on:
   push:
-    branches:
-      - "**"
+
   pull_request:
     branches:
       - pre-main
