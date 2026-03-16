@@ -40,7 +40,6 @@ jobs:
         run: |
           cd myproject
           sed -i 's/DEBUG = True/DEBUG = False/' myproject/settings.py
-          python manage.py collectstatic --noinput
 
       #run the Django test suite and fail if coverage drops below 80 percent
       - name: Run tests
