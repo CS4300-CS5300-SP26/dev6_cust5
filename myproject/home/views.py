@@ -13,9 +13,9 @@ from home.forms import CustomRegisterForm
 def index(request):
     return render(request, "bear_estate_homepage.html")
 
-# Roommate posting view
-def roommate_view(request):
-    return render(request, "roommate_postings_view.html")
+#Search for Roommates
+def search(request):
+    return render(request, 'search.html')
 
 #-------------------------------API views--------------------------------#
 # Roommate Post API
