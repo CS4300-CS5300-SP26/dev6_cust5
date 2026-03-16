@@ -502,8 +502,17 @@
                 data-darkreader-ignore
             >
             <div class="nav-buttons">
-                <a href="#" class="btn-login" id="loginBtn">Log In</a>
-                <a href="#" class="btn-signup" id="signupBtn">Sign Up</a>
+                {% if request.user.is_authenticated %}
+                    <span class="btn-login">Hi, {{ request.user.username }}</span>
+                    <a href="/roommate-posts/create/" class="btn-login">+ Post</a>
+                    <form method="post" action="/logout/" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-login" style="background:none; border:none; cursor:pointer;">Log Out</button>
+                    </form>
+                {% else %}
+                    <a href="#" class="btn-login" id="loginBtn">Log In</a>
+                    <a href="#" class="btn-signup" id="signupBtn">Sign Up</a>
+                {% endif %}
             </div>
         </div>
     </div>

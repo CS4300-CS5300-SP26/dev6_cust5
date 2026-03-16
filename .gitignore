@@ -2,8 +2,8 @@
 __pycache__/
 *.pyc
 
-# Django local database
-db.sqlite3
+#.env
+.env
 
 # Virtual environments
 .venv/
