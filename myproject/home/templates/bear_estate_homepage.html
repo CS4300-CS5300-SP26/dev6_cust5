@@ -1,0 +1,342 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BearEstate</title>
+
+
+
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/css/uikit.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit-icons.min.js"></script>
+
+</head>
+
+<body>
+
+
+<div class="top-banner">
+<h1>BearEstate</h1>
+
+<div class="nav-right">
+<img src="{% static 'images/bear.png' %}" class="nav-bear" alt="BearEstate polar bear mascot">
+
+<div class="nav-buttons">
+<a href="#" class="btn-login">Log In</a>
+<a href="#" class="btn-signup">Sign Up</a>
+</div>
+</div>
+</div>
+
+<div id="triangle" class="triangle"></div>
+
+<section class="hero hero-bg">
+
+<img src="{% static 'images/college_snow.jpg' %}" class="hero-bg-img">
+
+<div class="hero-grid">
+<div class="hero-inner">
+
+<p class="eyebrow">Built for Students</p>
+<p class="hero-sub">Find housing. Post subleases.<br>Message roommates directly.</p>
+<p class="hero-tagline">College Housing Network — Nationwide</p>
+
+<form class="search-bar" method="get">
+
+<div class="search-field">
+<label>Location</label>
+<input name="location" type="text" placeholder="City or ZIP" value="{{ selected_location }}">
+</div>
+
+<div class="search-divider"></div>
+
+<div class="search-field">
+<label>Looking to</label>
+<select name="intent">
+<option value="rent" {% if selected_intent != "buy" %}selected{% endif %}>Rent</option>
+<option value="buy" {% if selected_intent == "buy" %}selected{% endif %}>Buy</option>
+</select>
+</div>
+
+<div class="search-divider"></div>
+
+<div class="search-field">
+<label>Type</label>
+<select name="type">
+<option value="" {% if not selected_type %}selected{% endif %}>Any Type</option>
+<option value="house" {% if selected_type == "house" %}selected{% endif %}>House</option>
+<option value="apartment" {% if selected_type == "apartment" %}selected{% endif %}>Apartment</option>
+<option value="condo" {% if selected_type == "condo" %}selected{% endif %}>Condo</option>
+<option value="townhouse" {% if selected_type == "townhouse" %}selected{% endif %}>Townhouse</option>
+</select>
+</div>
+
+<div class="search-divider"></div>
+
+<div class="search-field">
+<label>Monthly Rent</label>
+<select name="budget">
+<option value="any">Any Price</option>
+<option value="0-900">Under $900</option>
+<option value="900-1400">$900 – $1,400</option>
+<option value="1400-2000">$1,400 – $2,000</option>
+<option value="2000-999999">$2,000+</option>
+</select>
+</div>
+
+<button class="search-btn" type="submit">Search →</button>
+
+</form>
+
+</div>
+</div>
+</section>
+
+<section class="property-results">
+
+<h2>Search Results</h2>
+
+<p>
+<strong>{{ properties|length }}</strong>
+propert{{ properties|length|pluralize:"y,ies" }} found
+</p>
+
+{% if properties %}
+
+<div class="property-grid">
+
+{% for property in properties %}
+
+<div class="property-card">
+<h3>{{ property.title }}</h3>
+<p><strong>Location:</strong> {{ property.location }}</p>
+<p><strong>Type:</strong> {{ property.property_type|title }}</p>
+<p><strong>Listing:</strong> {{ property.listing_type|title }}</p>
+<p><strong>Price:</strong> ${{ property.price }}</p>
+<p>{{ property.description }}</p>
+</div>
+
+{% endfor %}
+
+</div>
+
+{% endif %}
+
+<!-- API RESULTS -->
+
+{% if api_properties %}
+
+<h2>Additional Listings</h2>
+
+<div class="property-grid">
+
+{% for property in api_properties %}
+
+<div class="property-card">
+
+<h3>{{ property.formattedAddress }}</h3>
+
+<p><strong>City:</strong> {{ property.city }}</p>
+
+<p><strong>Type:</strong> {{ property.propertyType }}</p>
+
+<p><strong>Bedrooms:</strong> {{ property.bedrooms }}</p>
+
+<p><strong>Bathrooms:</strong> {{ property.bathrooms }}</p>
+
+<p><strong>Size:</strong> {{ property.squareFootage }} sqft</p>
+
+<p><strong>Year Built:</strong> {{ property.yearBuilt }}</p>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+{% endif %}
+
+</section>
+
+
+
+    
+
+   
+    <!-- Login / Signup Modal -->
+    <div class="modal-backdrop" id="modalBackdrop">
+        <div class="modal">
+            <button class="modal-close" id="modalClose">✕</button>
+            <div class="modal-tabs">
+                <button class="tab active" id="tabLogin">Log In</button>
+                <button class="tab" id="tabSignup">Sign Up</button>
+            </div>
+
+            <!-- LOGIN FORM — posts to index view -->
+            <div class="form-panel" id="formLogin">
+                <h2 class="modal-title">Welcome back</h2>
+                <p class="modal-sub">Log in to see saved properties</p>
+                <form method="POST" action="/">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label for="login-username">Username</label>
+                        <input id="login-username" type="text" name="username" placeholder="Your username" required />
+                    </div>
+                    <div class="field">
+                        <label for="login-password">Password</label>
+                        <input id="login-password" type="password" name="password" placeholder="••••••••" required />
+                    </div>
+                    {% if login_error %}
+                        <p style="color:#c0392b; font-size:0.85rem; margin-bottom:0.5rem;">{{ login_error }}</p>
+                    {% endif %}
+                    <button class="btn-submit" type="submit">Log In</button>
+                    <p class="switch-text">No account? <a href="#" id="switchToSignup">Sign up</a></p>
+                </form>
+            </div>
+
+            <!-- SIGNUP FORM — posts to register view -->
+            <div class="form-panel hidden" id="formSignup">
+                <h2 class="modal-title">Create account</h2>
+                <p class="modal-sub">Join thousands of students finding housing</p>
+                <form method="POST" action="{% url 'register' %}">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label for="reg-username">Username</label>
+                        <input id="reg-username" type="text" name="username" placeholder="Choose a username" required />
+                    </div>
+                    <div class="field">
+                        <label for="reg-email">Email <span style="opacity:0.5;">(optional)</span></label>
+                        <input id="reg-email" type="email" name="email" placeholder="you@example.com" />
+                    </div>
+                    <div class="field">
+                        <label for="reg-password1">Password</label>
+                        <input id="reg-password1" type="password" name="password1" placeholder="Create a password" required />
+                    </div>
+                    <div class="field">
+                        <label for="reg-password2">Confirm Password</label>
+                        <input id="reg-password2" type="password" name="password2" placeholder="Repeat your password" required />
+                    </div>
+                    {% if register_errors %}
+                        <ul style="color:#c0392b; font-size:0.85rem; margin-bottom:0.5rem; padding-left:1rem;">
+                            {% for error in register_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    <button class="btn-submit" type="submit">Create Account</button>
+                    <p class="switch-text">Already have an account? <a href="#" id="switchToLogin">Log in</a></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Triangle Scroll Script -->
+    <script>
+        window.addEventListener("scroll", function() {
+            let scrollY = window.scrollY;
+            let triangle = document.getElementById("triangle");
+            let newSize = 350 + scrollY * 0.6;
+            triangle.style.borderLeft = newSize + "px solid #1a7a8a";
+            triangle.style.borderBottom = "60px solid transparent";
+        });
+    </script>
+
+    <!-- Rent/Buy Budget Swap Script -->
+    <script>
+        const searchIntent = document.getElementById('searchIntent');
+        const budgetLabel  = document.getElementById('budgetLabel');
+        const searchBudget = document.getElementById('searchBudget');
+
+        const rentOptions = [
+            { value: 'any', label: 'Any Rent' },
+            { value: '0-900', label: 'Under $900' },
+            { value: '900-1400', label: '$900 – $1,400' },
+            { value: '1400-2000', label: '$1,400 – $2,000' },
+            { value: '2000-999999', label: '$2,000+' },
+        ];
+        const buyOptions = [
+            { value: 'any', label: 'Any Price' },
+            { value: '0-300000', label: 'Under $300k' },
+            { value: '300000-600000', label: '$300k – $600k' },
+            { value: '600000-1000000', label: '$600k – $1M' },
+            { value: '1000000-999999999', label: '$1M+' },
+        ];
+
+        function setSelectOptions(selectEl, optionsList) {
+            selectEl.innerHTML = '';
+            for (const opt of optionsList) {
+                const optionEl = document.createElement('option');
+                optionEl.value = opt.value;
+                optionEl.textContent = opt.label;
+                selectEl.appendChild(optionEl);
+            }
+        }
+
+        function updateBudgetOptions() {
+            const mode = searchIntent.value;
+            if (mode === 'rent') {
+                budgetLabel.textContent = 'Monthly Rent';
+                setSelectOptions(searchBudget, rentOptions);
+            } else {
+                budgetLabel.textContent = 'Purchase Price';
+                setSelectOptions(searchBudget, buyOptions);
+            }
+        }
+
+        searchIntent.addEventListener('change', updateBudgetOptions);
+        updateBudgetOptions();
+
+        document.getElementById('searchBtn').addEventListener('click', () => {
+            const location = document.getElementById('searchLocation').value;
+            const mode = searchIntent.value;
+            const type = document.getElementById('searchType').value;
+            const budget = searchBudget.value;
+            console.log({ location, mode, type, budget });
+        });
+    </script>
+
+    <!-- Modal Script -->
+    <script>
+        const backdrop  = document.getElementById('modalBackdrop');
+        const loginBtn  = document.getElementById('loginBtn');
+        const signupBtn = document.getElementById('signupBtn');
+        const closeBtn  = document.getElementById('modalClose');
+        const tabLogin  = document.getElementById('tabLogin');
+        const tabSignup = document.getElementById('tabSignup');
+        const formLogin  = document.getElementById('formLogin');
+        const formSignup = document.getElementById('formSignup');
+        const switchSU   = document.getElementById('switchToSignup');
+        const switchLI   = document.getElementById('switchToLogin');
+
+        function showModal(mode) { backdrop.classList.add('active'); setTab(mode); }
+        function hideModal()     { backdrop.classList.remove('active'); }
+        function setTab(mode) {
+            const isLogin = mode === 'login';
+            tabLogin.classList.toggle('active', isLogin);
+            tabSignup.classList.toggle('active', !isLogin);
+            formLogin.classList.toggle('hidden', !isLogin);
+            formSignup.classList.toggle('hidden', isLogin);
+        }
+
+        if (loginBtn)  loginBtn.addEventListener('click',  e => { e.preventDefault(); showModal('login');  });
+        if (signupBtn) signupBtn.addEventListener('click', e => { e.preventDefault(); showModal('signup'); });
+        closeBtn.addEventListener('click',  hideModal);
+        backdrop.addEventListener('click',  e => { if (e.target === backdrop) hideModal(); });
+        tabLogin.addEventListener('click',  () => setTab('login'));
+        tabSignup.addEventListener('click', () => setTab('signup'));
+        switchSU.addEventListener('click',  e => { e.preventDefault(); setTab('signup'); });
+        switchLI.addEventListener('click',  e => { e.preventDefault(); setTab('login');  });
+
+        // Auto-reopen modal if Django returned errors
+        {% if show_login_modal %}  showModal('login');  {% endif %}
+        {% if show_signup_modal %} showModal('signup'); {% endif %}
+    </script>
+
+
+</body>
+</html>
