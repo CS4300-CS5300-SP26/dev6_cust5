@@ -56,17 +56,28 @@
             z-index: 2;
             display: flex;
             justify-content: center;
+            align-items: center;
+            min-height: 160px;
+            padding: 0 2rem;
         }
 
         .hero-inner {
-            max-width: 860px;
+            max-width: 1100px;
             width: 100%;
             animation: fadeUp 1s cubic-bezier(0.22,1,0.36,1) both;
             background: rgba(255,255,255,0.62);
             border: 1px solid rgba(93,209,227,0.25);
             border-radius: 18px;
-            padding: 28px 28px 24px;
+            padding: 32px 36px 28px;
             box-shadow: 0 18px 55px rgba(30, 90, 120, 0.12);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .hero-inner .search-bar {
+            width: 100%;
+            max-width: 100%;
         }
 
         /* ── Fix nav: bear logo small, buttons stay in banner ───────── */
@@ -307,6 +318,158 @@
         }
         .card-cta:hover { background: var(--teal-dark); color: white; }
 
+        /* ── Expanded card modal ────────────────────────────────────── */
+        .card-expand-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 3000;
+            background: rgba(28, 58, 85, 0.55);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            cursor: pointer; /* click outside to close */
+        }
+        .card-expand-backdrop.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .card-expand {
+            cursor: default;
+            position: relative;
+            background: white;
+            border-radius: 20px;
+            width: min(700px, 90vw);
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 30px 80px rgba(28,58,85,0.28);
+            display: flex;
+            flex-direction: column;
+            transform: translateY(20px) scale(0.97);
+            transition: transform 0.3s cubic-bezier(0.22,1,0.36,1);
+        }
+        .card-expand-backdrop.active .card-expand {
+            transform: translateY(0) scale(1);
+        }
+
+        .card-expand-photo {
+            width: 100%;
+            height: 280px;
+            background: linear-gradient(135deg, rgba(93,209,227,0.2) 0%, rgba(26,122,138,0.3) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border-radius: 20px 20px 0 0;
+            overflow: hidden;
+            position: relative;
+        }
+        .card-expand-photo img { width: 100%; height: 100%; object-fit: cover; }
+        .card-expand-photo .expand-avatar { font-size: 6rem; }
+
+        .card-expand-badge {
+            position: absolute;
+            top: 16px; right: 16px;
+            background: var(--teal-dark);
+            color: white;
+            font-size: 0.72rem;
+            font-weight: 500;
+            padding: 4px 12px;
+            border-radius: 20px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .card-expand-body {
+            padding: 28px 32px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card-expand-name {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.1;
+        }
+
+        .card-expand-location {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .card-expand-location svg { width: 14px; height: 14px; fill: var(--teal-dark); }
+
+        .card-expand-price {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--teal-dark);
+        }
+        .card-expand-price span {
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        .card-expand-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+        .card-expand-tags .tag {
+            font-size: 0.8rem;
+            padding: 4px 14px;
+        }
+
+        .card-expand-bio {
+            font-size: 0.95rem;
+            color: var(--text);
+            line-height: 1.7;
+            border-top: 1px solid rgba(93,209,227,0.2);
+            padding-top: 16px;
+        }
+
+        .card-expand-cta {
+            display: block;
+            text-align: center;
+            padding: 12px 0;
+            background: var(--teal-dark);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.18s;
+            margin-top: 4px;
+        }
+        .card-expand-cta:hover { background: var(--blue-dark); color: white; }
+
+        .card-expand-close {
+            position: absolute;
+            top: 14px; right: 14px;
+            background: rgba(255,255,255,0.85);
+            border: none;
+            border-radius: 50%;
+            width: 32px; height: 32px;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text);
+            z-index: 10;
+            transition: background 0.15s;
+        }
+        .card-expand-close:hover { background: white; }
+
         /* ── Responsive ─────────────────────────────────────────────── */
         @media (max-width: 900px) {
             .hero { padding: 80px 1.25rem 40px; }
@@ -314,14 +477,14 @@
             .search-bar { flex-direction: column; align-items: stretch; }
             .search-divider { width: 100%; height: 1px; margin: 0; }
             .search-btn { width: 100%; min-height: 48px; }
-            .student-features { padding: 50px 1.25rem; flex-direction: column; }
-            .feature { padding: 1.5rem; }
-            .roommate-section { padding: 40px 1.25rem; }
+            .roommate-section { padding: 40px 0 0; }
             .carousel-track { grid-auto-columns: calc((100% - 16px) / 2); }
+            .card-expand-body { padding: 20px; }
         }
         @media (max-width: 600px) {
             .carousel-track { grid-auto-columns: 85%; }
             .carousel-arrow { display: none; }
+            .card-expand-photo { height: 200px; }
         }
     </style>
 </head>
@@ -330,7 +493,7 @@
 
     <!-- ── Top Banner (new version: nav-bear + student housing) ────── -->
     <div class="top-banner">
-        <h1>BearEstate</h1>
+        <a href="/" style="text-decoration:none;"><h1>BearEstate</h1></a>
         <div class="nav-right">
             <img
                 src="{% static 'images/bear.png' %}"
@@ -423,6 +586,22 @@
             </div>
         </div>
     </section>
+
+    <!-- ── Expanded Card Modal ───────────────────────────────────────── -->
+    <div class="card-expand-backdrop" id="cardExpandBackdrop">
+        <div class="card-expand" id="cardExpandPanel">
+            <button class="card-expand-close" id="cardExpandClose">✕</button>
+            <div class="card-expand-photo" id="expandPhoto"></div>
+            <div class="card-expand-body">
+                <div class="card-expand-name" id="expandName"></div>
+                <div class="card-expand-location" id="expandLocation"></div>
+                <div class="card-expand-price" id="expandPrice"></div>
+                <div class="card-expand-tags" id="expandTags"></div>
+                <p class="card-expand-bio" id="expandBio"></p>
+                <a href="#" class="card-expand-cta" id="expandCta">Message →</a>
+            </div>
+        </div>
+    </div>
 
     <!-- ── Login / Signup Modal ─────────────────────────────────────── -->
     <div class="modal-backdrop" id="modalBackdrop">
@@ -519,17 +698,59 @@
         });
     </script>
 
-    <!-- Roommate Carousel Script -->
+    <!-- Roommate Carousel + Expand Script -->
     <script>
         const DEMO_LISTINGS = [
-            { id:1, name:"Mara Thompson",  location:"Anchorage, AK", rent:850, type:"Apartment", looking_for:"Female", tags:["Non-smoker","Pet-friendly","WFH"],            bio:"Grad student, tidy, love hiking on weekends. Looking for someone chill.", photo_url:null, status:"Active" },
-            { id:2, name:"Jake Sorenson",  location:"Fairbanks, AK", rent:620, type:"House",     looking_for:"Any",    tags:["Outdoorsy","Quiet hours","Split utilities"],   bio:"Wildlife biologist. Often out in the field. Need a responsible co-tenant.", photo_url:null, status:"Active" },
-            { id:3, name:"Priya Nair",     location:"Juneau, AK",    rent:975, type:"Condo",     looking_for:"Any",    tags:["Vegetarian kitchen","Remote-worker","No pets"], bio:"Software engineer, tidy & quiet. Great harbor views from the living room.", photo_url:null, status:"Active" },
-            { id:4, name:"Cole Whitfield", location:"Wasilla, AK",   rent:700, type:"Townhouse", looking_for:"Male",   tags:["Pet-friendly","Flexible lease","Garage"],       bio:"Mechanic, easy-going. Looking for someone who respects shared spaces.", photo_url:null, status:"Active" },
+            { id:1, name:"Mara Thompson",  location:"Anchorage, AK", rent:850, type:"Apartment", looking_for:"Female", tags:["Non-smoker","Pet-friendly","WFH"],            bio:"Grad student studying environmental science. Very tidy and respect shared spaces. Love hiking and kayaking on weekends. Looking for someone laid-back who values a clean, quiet home.", photo_url:null, status:"Active" },
+            { id:2, name:"Jake Sorenson",  location:"Fairbanks, AK", rent:620, type:"House",     looking_for:"Any",    tags:["Outdoorsy","Quiet hours","Split utilities"],   bio:"Wildlife biologist who spends a lot of time in the field. When I'm home I keep to myself. Need a responsible co-tenant who can manage things while I'm away and respects the shared space.", photo_url:null, status:"Active" },
+            { id:3, name:"Priya Nair",     location:"Juneau, AK",    rent:975, type:"Condo",     looking_for:"Any",    tags:["Vegetarian kitchen","Remote-worker","No pets"], bio:"Software engineer working remotely. Tidy, quiet, and home most days. The condo has stunning harbor views from the living room. Prefer a non-smoker who respects a vegetarian kitchen.", photo_url:null, status:"Active" },
+            { id:4, name:"Cole Whitfield", location:"Wasilla, AK",   rent:700, type:"Townhouse", looking_for:"Male",   tags:["Pet-friendly","Flexible lease","Garage"],       bio:"Mechanic by trade, easy-going by nature. Pet-friendly home with a large garage. Looking for someone who respects shared spaces and doesn't mind the occasional dog visit.", photo_url:null, status:"Active" },
         ];
 
         const AVATARS = ["🧑‍🦱","👩‍🦰","🧑‍🦳","👨‍🦲"];
 
+        // ── Expand modal elements ──
+        const expandBackdrop = document.getElementById('cardExpandBackdrop');
+        const expandPanel    = document.getElementById('cardExpandPanel');
+        const expandClose    = document.getElementById('cardExpandClose');
+
+        function openExpand(p, idx) {
+            const photo = p.photo_url
+                ? `<img src="${p.photo_url}" alt="${p.name}">`
+                : `<span class="expand-avatar">${AVATARS[idx % AVATARS.length]}</span>`;
+
+            document.getElementById('expandPhoto').innerHTML =
+                `${photo}<span class="card-expand-badge">${p.status || 'Active'}</span>`;
+            document.getElementById('expandName').textContent = p.name;
+            document.getElementById('expandLocation').innerHTML = `
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/>
+                </svg>
+                ${p.location} &nbsp;·&nbsp; ${p.type}`;
+            document.getElementById('expandPrice').innerHTML =
+                `$${p.rent.toLocaleString()}<span> / month</span>`;
+            document.getElementById('expandTags').innerHTML =
+                (p.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+            document.getElementById('expandBio').textContent = p.bio;
+            document.getElementById('expandCta').href = `/roommate/${p.id}/`;
+
+            expandBackdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeExpand() {
+            expandBackdrop.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // Close when clicking the backdrop (outside the panel)
+        expandBackdrop.addEventListener('click', e => {
+            if (e.target === expandBackdrop) closeExpand();
+        });
+        expandClose.addEventListener('click', closeExpand);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeExpand(); });
+
+        // ── Build small carousel cards ──
         function buildCard(p, idx) {
             const card = document.createElement('div');
             card.className = 'roommate-card';
@@ -553,8 +774,8 @@
                     <div class="card-price">$${p.rent.toLocaleString()}<span> / mo · ${p.type}</span></div>
                     <div class="card-tags">${tags}</div>
                     <p class="card-bio">${p.bio}</p>
-                    <a href="/search/" class="card-cta">View Posting →</a>
                 </div>`;
+            card.addEventListener('click', () => openExpand(p, idx));
             return card;
         }
 
