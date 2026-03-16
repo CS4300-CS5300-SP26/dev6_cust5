@@ -2,6 +2,12 @@ from django.shortcuts import render
 from .models import RoommatePost
 from rest_framework import viewsets
 from .serializers import RoommatePostSerializer
+
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login
+from .models import Property
+from .rentcast_api import get_properties
+from home.forms import CustomRegisterForm
 #-------------------------------HTML views--------------------------------#
 # Home page
 def index(request):
@@ -20,13 +26,8 @@ class RoommatePostViewSet(viewsets.ModelViewSet):
     '''
     queryset = RoommatePost.objects.all()
     serializer_class = RoommatePostSerializer
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
-from .models import Property
-from .rentcast_api import get_properties
-from home.forms import CustomRegisterForm
 
-
+#------------------------------------------------------------------------#
 def index(request):
 
     context = {}
