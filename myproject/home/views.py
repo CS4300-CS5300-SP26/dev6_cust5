@@ -56,11 +56,23 @@ def index(request):
 
     api_properties = []
 
+    min_price, max_price = None, None
+    if price_range and price_range != "any":
+        try:
+            min_price, max_price = map(int, price_range.split("-"))
+        except ValueError:
+            pass
+
     if location:
         properties = properties.filter(location__icontains=location)
 
         try:
-            api_properties = get_properties(location)
+           api_properties = get_properties(
+                location,
+                property_type=property_type,
+                min_price=min_price,
+                max_price=max_price,
+            )
         except Exception as e:
             print("API Error:", e)
             api_properties = []
@@ -70,13 +82,9 @@ def index(request):
 
     if property_type and property_type.lower() != "any type":
         properties = properties.filter(property_type=property_type.lower())
-
-    if price_range and price_range != "any":
-        try:
-            min_price, max_price = map(int, price_range.split("-"))
-            properties = properties.filter(price__gte=min_price, price__lte=max_price)
-        except ValueError:
-            pass
+        
+    if min_price is not None and max_price is not None:
+        properties = properties.filter(price__gte=min_price, price__lte=max_price)
 
     context.update({
         "properties": properties,
