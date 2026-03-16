@@ -3,6 +3,8 @@ name: AI Code Review
 
 #run this workflow whenever a pull request is opened, updated, or reopened
 on:
+  push:
+
   pull_request:
     types:
       - opened
