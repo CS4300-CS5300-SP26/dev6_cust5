@@ -80,6 +80,19 @@ body {
     background: rgba(255,255,255,0.18);
 }
 
+.btn-primary {
+    background-color: #1f4fa3;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    background-color: #163a7a;
+}
 .btn-signup {
     text-decoration: none;
     font-size: 0.8rem;

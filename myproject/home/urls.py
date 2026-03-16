@@ -7,9 +7,11 @@ router = DefaultRouter()
 router.register('', views.RoommatePostViewSet, basename='rm_post')
 
 urlpatterns = [
-    path('view/', views.search, name='rm_view'),
+    path('', views.roommate_list, name='roommate_list'),
+    path('create/', views.roommate_create, name='roommate_create'),
+    path('<int:post_id>/delete/', views.roommate_delete, name='roommate_delete'),
+    path('<int:post_id>/close/', views.roommate_close, name='roommate_close'),
     path('api/', include(router.urls)),
-    path('', views.index, name='index'),
     path('search/', views.search, name='search'),
-
+    
 ]
