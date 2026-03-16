@@ -1,10 +1,33 @@
+from django.shortcuts import render
+from .models import RoommatePost
+from rest_framework import viewsets
+from .serializers import RoommatePostSerializer
+
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from .models import Property
 from .rentcast_api import get_properties
 from home.forms import CustomRegisterForm
+#-------------------------------HTML views--------------------------------#
+# Home page
+def index(request):
+    return render(request, "bear_estate_homepage.html")
 
+#Search for Roommates
+def search(request):
+    return render(request, 'search.html')
 
+#-------------------------------API views--------------------------------#
+# Roommate Post API
+class RoommatePostViewSet(viewsets.ModelViewSet):
+    '''
+    Recieves all the roommate post objects. Calls the serializer.
+    Displays the data in json format.
+    '''
+    queryset = RoommatePost.objects.all()
+    serializer_class = RoommatePostSerializer
+
+#------------------------------------------------------------------------#
 def index(request):
 
     context = {}
