@@ -17,7 +17,7 @@ class RoommatePost(models.Model):
         CLOSED = 'closed', 'Closed'
     
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    message = models.CharField(max_length = 200)
+    message = models.CharField(max_length = 500)
     date = models.DateField()
 
     status = models.CharField(
@@ -25,6 +25,8 @@ class RoommatePost(models.Model):
         choices=Status.choices,
         default=Status.OPEN,
     )
+    rent = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)      
+    property_type = models.CharField(max_length=20, blank=True, default='')  
 
 class Property(models.Model):
     title = models.CharField(max_length=200)
