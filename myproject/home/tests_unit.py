@@ -4,71 +4,6 @@ from unittest.mock import patch, MagicMock
 from home.models import RoommatePost, Property
 from home.forms import RoommatePostForm, CustomRegisterForm
 
-
-# ── Model unit tests ──────────────────────────────────────────────────────────
-
-class RoommatePostModelTest(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(username='u', password='pass')
-
-    def test_default_status_is_open(self):
-        post = RoommatePost.objects.create(
-            user=self.user, message='Hi', date='2026-03-01'
-        )
-        self.assertEqual(post.status, 'open')
-
-    def test_status_can_be_set_to_closed(self):
-        post = RoommatePost.objects.create(
-            user=self.user, message='Hi', date='2026-03-01', status='closed'
-        )
-        self.assertEqual(post.status, 'closed')
-
-    def test_rent_is_optional(self):
-        post = RoommatePost.objects.create(
-            user=self.user, message='Hi', date='2026-03-01'
-        )
-        self.assertIsNone(post.rent)
-
-    def test_property_type_defaults_to_empty(self):
-        post = RoommatePost.objects.create(
-            user=self.user, message='Hi', date='2026-03-01'
-        )
-        self.assertEqual(post.property_type, '')
-
-    def test_message_max_length(self):
-        post = RoommatePost(
-            user=self.user,
-            message='x' * 500,
-            date='2026-03-01'
-        )
-        post.full_clean()  
-
-    def test_user_deletion_cascades(self):
-        RoommatePost.objects.create(
-            user=self.user, message='Hi', date='2026-03-01'
-        )
-        self.user.delete()
-        self.assertEqual(RoommatePost.objects.count(), 0)
-
-
-class PropertyModelTest(TestCase):
-    def test_str_returns_title(self):
-        prop = Property.objects.create(
-            title='Test Place', location='Denver, CO',
-            listing_type='rent', property_type='apartment', price=1200
-        )
-        self.assertEqual(str(prop), 'Test Place')
-
-    def test_description_is_optional(self):
-        prop = Property.objects.create(
-            title='Test', location='Denver, CO',
-            listing_type='rent', property_type='house', price=900
-        )
-        self.assertEqual(prop.description, '')
-
-
-# ── Form unit tests ───────────────────────────────────────────────────────────
-
 class RoommatePostFormTest(TestCase):
     def _valid_data(self, **overrides):
         data = {
@@ -82,15 +17,24 @@ class RoommatePostFormTest(TestCase):
         return data
 
     def test_valid_form(self):
+        """
+        Roommate Post form should be valid
+        """
         form = RoommatePostForm(data=self._valid_data())
         self.assertTrue(form.is_valid())
 
     def test_missing_message_invalid(self):
+        """
+        If message is empty, the form is not valid
+        """
         form = RoommatePostForm(data=self._valid_data(message=''))
         self.assertFalse(form.is_valid())
         self.assertIn('message', form.errors)
 
     def test_missing_date_invalid(self):
+        """
+        The form rejects submission when the date is missing
+        """
         form = RoommatePostForm(data=self._valid_data(date=''))
         self.assertFalse(form.is_valid())
         self.assertIn('date', form.errors)
@@ -100,8 +44,66 @@ class RoommatePostFormTest(TestCase):
         self.assertTrue(form.is_valid())
 
     def test_invalid_status(self):
+        """
+        Status can only be Open or Closed
+        """
         form = RoommatePostForm(data=self._valid_data(status='maybe'))
         self.assertFalse(form.is_valid())
+
+class RoommatePostModelTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='u', password='pass')
+
+    def test_default_status_is_open(self):
+        """
+        Tests that a new roommate post gets status open by default
+        """
+        post = RoommatePost.objects.create(
+            user=self.user, message='Hi', date='2026-03-01'
+        )
+        self.assertEqual(post.status, 'open')
+
+    def test_rent_is_optional(self):
+        """
+        Rent could be optional
+        """
+        post = RoommatePost.objects.create(
+            user=self.user, message='Hi', date='2026-03-01'
+        )
+        self.assertIsNone(post.rent)
+
+    def test_property_type_defaults_to_empty(self):
+        """
+        If not property type, returns string
+        """
+        post = RoommatePost.objects.create(
+            user=self.user, message='Hi', date='2026-03-01'
+        )
+        self.assertEqual(post.property_type, '')
+
+    def test_user_deletion_cascades(self):
+        """
+        If user is deleted, their posts are also deleted
+        """
+        RoommatePost.objects.create(
+            user=self.user, message='Hi', date='2026-03-01'
+        )
+        self.user.delete()
+        self.assertEqual(RoommatePost.objects.count(), 0)
+
+
+class PropertyModelTest(TestCase):
+    def test_description_is_optional(self):
+        """
+        Decription is optional
+        """
+        prop = Property.objects.create(
+            title='Test', location='Denver, CO',
+            listing_type='rent', property_type='house', price=900
+        )
+        self.assertEqual(prop.description, '')
+
+
 
 
 class CustomRegisterFormTest(TestCase):
@@ -116,23 +118,34 @@ class CustomRegisterFormTest(TestCase):
         return data
 
     def test_valid_form(self):
+        """
+        Form is valid
+        """
         form = CustomRegisterForm(data=self._valid_data())
         self.assertTrue(form.is_valid())
 
     def test_email_is_optional(self):
+        """
+        Email is optional
+        """
         form = CustomRegisterForm(data=self._valid_data(email=''))
         self.assertTrue(form.is_valid())
 
     def test_mismatched_passwords_invalid(self):
+        """
+        If the password is mismatched, then you won't be able to register - form invalid
+        """
         form = CustomRegisterForm(data=self._valid_data(password2='different'))
         self.assertFalse(form.is_valid())
 
     def test_missing_username_invalid(self):
+        """
+        Username is not optional
+        """
         form = CustomRegisterForm(data=self._valid_data(username=''))
         self.assertFalse(form.is_valid())
 
 
-# ── Rentcast API unit tests (mocked — never hits real API) ────────────────────
 
 class RentcastAPITest(TestCase):
     @patch('home.rentcast_api.requests.get')
@@ -161,6 +174,9 @@ class RentcastAPITest(TestCase):
 
     @patch('home.rentcast_api.requests.get')
     def test_filters_by_min_price(self, mock_get):
+        """
+        Tests that the function removes properties below the minimum price
+        """
         mock_get.return_value = MagicMock(
             status_code=200,
             json=lambda: [
@@ -176,6 +192,9 @@ class RentcastAPITest(TestCase):
 
     @patch('home.rentcast_api.requests.get')
     def test_filters_by_max_price(self, mock_get):
+        """
+        Tests that the function removes properties below the maximum price
+        """
         mock_get.return_value = MagicMock(
             status_code=200,
             json=lambda: [

@@ -3,9 +3,8 @@ from django.contrib.auth.models import User
 from unittest.mock import patch
 from home.models import RoommatePost, Property
 
-
 class AuthFlowIntegrationTest(TestCase):
-    """Full register → login → logout flow."""
+    """Full register -> login -> logout flow."""
 
     def test_register_then_login_flow(self):
         # register
@@ -24,6 +23,7 @@ class AuthFlowIntegrationTest(TestCase):
         self.assertEqual(response.status_code, 302)
 
     def test_invalid_login_stays_on_page(self):
+        # no redirect
         response = self.client.post('/', {
             'username': 'nobody',
             'password': 'wrongpass',
@@ -42,7 +42,7 @@ class AuthFlowIntegrationTest(TestCase):
 
 
 class RoommatePostFlowIntegrationTest(TestCase):
-    """Full create → view → close → delete flow."""
+    """Full create -> view -> close -> delete flow."""
 
     def setUp(self):
         self.user = User.objects.create_user(username='poster', password='Password123!')
@@ -107,8 +107,7 @@ class RoommatePostFlowIntegrationTest(TestCase):
 
 
 class PropertySearchIntegrationTest(TestCase):
-    """Property search filtering with mocked API."""
-
+    """Checks the DB"""
     def setUp(self):
         Property.objects.create(
             title='Cheap Apt', price=900,

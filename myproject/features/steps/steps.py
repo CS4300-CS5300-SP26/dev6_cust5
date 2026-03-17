@@ -3,8 +3,7 @@ from django.contrib.auth.models import User
 from home.models import RoommatePost, Property
 from unittest.mock import patch
 
-
-# ── Registration steps ────────────────────────────────────────────────────────
+# ---------------- Register ----------------#
 
 @given('I am on the homepage')
 def step_on_homepage(context):
@@ -35,8 +34,6 @@ def step_no_user_created(context):
     assert not User.objects.filter(username='baduser').exists()
 
 
-# ── Roommate posting steps ────────────────────────────────────────────────────
-
 @given('a user "{username}" exists and is logged in')
 def step_user_logged_in(context, username):
     user, _ = User.objects.get_or_create(username=username)
@@ -51,6 +48,8 @@ def step_other_user_logged_in(context, username):
     user.set_password('Password123!')
     user.save()
     context.test.client.login(username=username, password='Password123!')
+
+# ---------------- Roommate Posting ----------------#
 
 @given('a roommate post exists for "{username}"')
 def step_post_exists(context, username):
@@ -104,8 +103,7 @@ def step_post_deleted(context):
 def step_post_still_exists(context):
     assert RoommatePost.objects.filter(id=context.post.id).exists()
 
-
-# ── Property search steps ─────────────────────────────────────────────────────
+# ---------------- Properties Filter ----------------#
 
 @given('the following properties exist:')
 def step_properties_exist(context):
