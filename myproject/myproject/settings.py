@@ -16,6 +16,11 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["bearestate.me", "www.bearestate.me", "127.0.0.1", "localhost"]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://bearestate.me",
+    "https://www.bearestate.me",
+]
+
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
@@ -116,6 +121,8 @@ STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STATICFILES_DIRS = [BASE_DIR.parent / 'static']  #trouble shooting
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+LOGIN_URL = '/'
 
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/' 

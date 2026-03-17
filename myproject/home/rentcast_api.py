@@ -29,7 +29,7 @@ def get_properties(location, property_type=None, min_price=None, max_price=None)
     params = {
         "city": city,
         "state": state,
-        "limit": 5,
+        "limit": 10,
         "status": "Active",
     }
 
