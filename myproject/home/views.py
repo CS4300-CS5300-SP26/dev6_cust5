@@ -11,10 +11,9 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 #-------------------------------HTML views--------------------------------#
 # Home page
-
 def search(request):
     return render(request, "search.html")
-
+    
 #Search for Roommates
 def roommate_list(request):
     posts = RoommatePost.objects.all().order_by('-date')
@@ -79,7 +78,7 @@ def index(request):
             context['show_login_modal'] = True
 
     # ---------------- PROPERTY SEARCH ----------------
-    properties = Property.objects.all()
+    properties = Property.objects.none() 
 
     location = request.GET.get("location", "").strip()
     listing_type = request.GET.get("intent", "").strip()
@@ -96,8 +95,8 @@ def index(request):
             pass
 
     if location:
-        properties = properties.filter(location__icontains=location)
-
+        properties = Property.objects.filter(location__icontains=location)
+        #properties = properties.filter(location__icontains=location)
         try:
            api_properties = get_properties(
                 location,
