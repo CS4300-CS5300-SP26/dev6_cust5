@@ -11,11 +11,10 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 #-------------------------------HTML views--------------------------------#
 # Home page
-def index(request):
-    return render(request, "bear_estate_homepage.html")
 
 def search(request):
     return render(request, "search.html")
+
 #Search for Roommates
 def roommate_list(request):
     posts = RoommatePost.objects.all().order_by('-date')
