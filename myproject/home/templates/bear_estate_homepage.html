@@ -1,4 +1,4 @@
-{% load static %}0
+{% load static %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -36,7 +36,15 @@
                 data-darkreader-ignore
             >
             <div class="nav-buttons">
-                <a href="#" class="btn-login" id="loginBtn">Log In</a>
+                {% if request.user.is_authenticated %}
+                  <span class="btn-login">Hi, {{ request.user.username }}</span>
+                    <form method="post" action="/logout/" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-login" style="background:none; border:none; cursor:pointer;">Log Out</button>
+                    </form>
+                {% else %}
+                  <a href="#" class="btn-login" id="loginBtn">Log In</a>
+                {% endif %}
                 <a href="#" class="btn-signup" id="signupBtn">Sign Up</a>
             </div>
         </div>
@@ -59,7 +67,7 @@
             <div class="hero-inner">
 
                 <p class="eyebrow">Built for Students</p>
-                <p class="hero-sub">Find housing. Post subleases.<br/>Message roommates directly.</p>
+                <p class="hero-sub">Find housing. Post subleases.<br>Message roommates directly.</p>
 
                 <p class="hero-tagline">College Housing Network — Nationwide</p>
 
@@ -71,10 +79,16 @@
                 </div>
 
                 <!-- Search Bar -->
-                <div class="search-bar" role="search" aria-label="Housing search">
+                <form class="search-bar" method="get" role="search" aria-label="Housing search">
                     <div class="search-field">
                         <label for="searchLocation">Location</label>
-                        <input id="searchLocation" type="text" placeholder="City, neighborhood, or ZIP…" />
+                        <input
+                            id="searchLocation"
+                            name="location"
+                            type="text"
+                            placeholder="City, neighborhood, or ZIP…"
+                            value="{{ selected_location }}"
+                        >
                     </div>
 
                     <div class="search-divider"></div>
@@ -82,9 +96,9 @@
                     <!-- Rent vs Buy -->
                     <div class="search-field">
                         <label for="searchIntent">Looking to</label>
-                        <select id="searchIntent">
-                            <option value="rent" selected>Rent</option>
-                            <option value="buy">Buy</option>
+                        <select id="searchIntent" name="intent">
+                            <option value="rent" {% if selected_intent != "buy" %}selected{% endif %}>Rent</option>
+                            <option value="buy" {% if selected_intent == "buy" %}selected{% endif %}>Buy</option>
                         </select>
                     </div>
 
@@ -92,12 +106,12 @@
 
                     <div class="search-field">
                         <label for="searchType">Type</label>
-                        <select id="searchType">
-                            <option>Any Type</option>
-                            <option>House</option>
-                            <option>Apartment</option>
-                            <option>Condo</option>
-                            <option>Townhouse</option>
+                        <select id="searchType" name="type">
+                            <option value="" {% if not selected_type %}selected{% endif %}>Any Type</option>
+                            <option value="house" {% if selected_type == "house" %}selected{% endif %}>House</option>
+                            <option value="apartment" {% if selected_type == "apartment" %}selected{% endif %}>Apartment</option>
+                            <option value="condo" {% if selected_type == "condo" %}selected{% endif %}>Condo</option>
+                            <option value="townhouse" {% if selected_type == "townhouse" %}selected{% endif %}>Townhouse</option>
                         </select>
                     </div>
 
@@ -106,18 +120,17 @@
                     <!-- Budget changes based on Rent vs Buy -->
                     <div class="search-field">
                         <label for="searchBudget" id="budgetLabel">Monthly Rent</label>
-                        <select id="searchBudget">
-                            <!-- Default: RENT options -->
-                            <option value="any">Any Rent</option>
-                            <option value="0-900">Under $900</option>
-                            <option value="900-1400">$900 – $1,400</option>
-                            <option value="1400-2000">$1,400 – $2,000</option>
-                            <option value="2000-999999">$2,000+</option>
+                        <select id="searchBudget" name="budget">
+                            <option value="any" {% if selected_budget == "any" or not selected_budget %}selected{% endif %}>Any Rent</option>
+                            <option value="0-900" {% if selected_budget == "0-900" %}selected{% endif %}>Under $900</option>
+                            <option value="900-1400" {% if selected_budget == "900-1400" %}selected{% endif %}>$900 – $1,400</option>
+                            <option value="1400-2000" {% if selected_budget == "1400-2000" %}selected{% endif %}>$1,400 – $2,000</option>
+                            <option value="2000-999999" {% if selected_budget == "2000-999999" %}selected{% endif %}>$2,000+</option>
                         </select>
                     </div>
 
-                    <button class="search-btn" id="searchBtn" type="button">Search →</button>
-                </div>
+                    <button class="search-btn" id="searchBtn" type="submit">Search →</button>
+                </form>
 
             </div>
         </div>
@@ -128,6 +141,9 @@
         <div class="feature">
             <h3>Post Your Place</h3>
             <p>Subleasing? Looking for roommates? List it in minutes.</p>
+            <a href="/roommate-posts/create/" style="display:inline-block; margin-top:0.75rem; color:var(--teal-dark); border:1.5px solid var(--teal-dark); padding:0.4rem 1rem; border-radius:20px; font-size:0.85rem; text-decoration:none;">Post a Listing →</a>
+            <a href="/roommate-posts/" style="display:inline-block; margin-top:0.75rem; color:var(--teal-dark); border:1.5px solid var(--teal-dark); padding:0.4rem 1rem; border-radius:20px; font-size:0.85rem; text-decoration:none;">Browse Roommates →</a>
+            <a href="/roommate-posts/search/" style="display:inline-block; margin-top:0.75rem; color:var(--teal-dark); border:1.5px solid var(--teal-dark); padding:0.4rem 1rem; border-radius:20px; font-size:0.85rem; text-decoration:none;">Browse Stock Roommates →</a>
         </div>
 
         <div class="feature">
@@ -141,6 +157,50 @@
         </div>
     </section>
 
+    <!-- Property Results -->
+    <section class="property-results">
+        <h2>Search Results</h2>
+
+        <p>
+            <strong>{{ result_count }}</strong>
+            propert{{ result_count|pluralize:"y,ies" }} found
+        </p>
+
+        {% if properties %}
+            <div class="property-grid">
+                {% for property in properties %}
+                    <div class="property-card">
+                        <h3>{{ property.title }}</h3>
+                        <p><strong>Location:</strong> {{ property.location }}</p>
+                        <p><strong>Type:</strong> {{ property.property_type|title }}</p>
+                        <p><strong>Listing:</strong> {{ property.listing_type|title }}</p>
+                        <p><strong>Price:</strong> ${{ property.price }}</p>
+                        <p>{{ property.description }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if api_properties %}
+            <h2>Additional Listings</h2>
+
+            <div class="property-grid">
+                {% for property in api_properties %}
+                    <div class="property-card">
+                        <h3>{{ property.formattedAddress }}</h3>
+                        <p><strong>City:</strong> {{ property.city }}</p>
+                        <p><strong>Type:</strong> {{ property.propertyType }}</p>
+                        <p><strong>Rent:</strong> ${{ property.price }}/mo</p> 
+                        <p><strong>Bedrooms:</strong> {{ property.bedrooms }}</p>
+                        <p><strong>Bathrooms:</strong> {{ property.bathrooms }}</p>
+                        <p><strong>Size:</strong> {{ property.squareFootage }} sqft</p>
+                        <!--<p><strong>Year Built:</strong> {{ property.yearBuilt }}</p>-->
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+
     <!-- Login / Signup Modal -->
     <div class="modal-backdrop" id="modalBackdrop">
         <div class="modal">
@@ -149,23 +209,74 @@
                 <button class="tab active" id="tabLogin">Log In</button>
                 <button class="tab" id="tabSignup">Sign Up</button>
             </div>
+
+            <!-- LOGIN FORM -->
             <div class="form-panel" id="formLogin">
                 <h2 class="modal-title">Welcome back</h2>
                 <p class="modal-sub">Log in to see saved properties</p>
-                <div class="field"><label>Email</label><input type="email" placeholder="youremail@example.com" /></div>
-                <div class="field"><label>Password</label><input type="password" placeholder="••••••••" /></div>
-                <a href="#" class="forgot">Forgot password?</a>
-                <button class="btn-submit">Log In</button>
-                <p class="switch-text">No account? <a href="#" id="switchToSignup">Sign up</a></p>
+
+                <form method="POST" action="/">
+                    {% csrf_token %}
+                    <div class="field">
+                        <label for="login-username">Username</label>
+                        <input id="login-username" type="text" name="username" placeholder="Your username" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="login-password">Password</label>
+                        <input id="login-password" type="password" name="password" placeholder="••••••••" required>
+                    </div>
+
+                    <a href="#" class="forgot">Forgot password?</a>
+
+                    {% if login_error %}
+                        <p style="color:#c0392b; font-size:0.85rem; margin-bottom:0.5rem;">{{ login_error }}</p>
+                    {% endif %}
+
+                    <button class="btn-submit" type="submit">Log In</button>
+                    <p class="switch-text">No account? <a href="#" id="switchToSignup">Sign up</a></p>
+                </form>
             </div>
+
+            <!-- SIGNUP FORM -->
             <div class="form-panel hidden" id="formSignup">
                 <h2 class="modal-title">Create account</h2>
                 <p class="modal-sub">Join thousands of students finding housing</p>
-                <div class="field"><label>Full Name</label><input type="text" placeholder="Jane Smith" /></div>
-                <div class="field"><label>Email</label><input type="email" placeholder="you@example.com" /></div>
-                <div class="field"><label>Password</label><input type="password" placeholder="Create a password" /></div>
-                <button class="btn-submit">Create Account</button>
-                <p class="switch-text">Already have an account? <a href="#" id="switchToLogin">Log in</a></p>
+
+                <form method="POST" action="{% url 'register' %}">
+                    {% csrf_token %}
+
+                    <div class="field">
+                        <label for="reg-username">Username</label>
+                        <input id="reg-username" type="text" name="username" placeholder="Choose a username" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="reg-email">Email</label>
+                        <input id="reg-email" type="email" name="email" placeholder="you@example.com">
+                    </div>
+
+                    <div class="field">
+                        <label for="reg-password1">Password</label>
+                        <input id="reg-password1" type="password" name="password1" placeholder="Create a password" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="reg-password2">Confirm Password</label>
+                        <input id="reg-password2" type="password" name="password2" placeholder="Repeat your password" required>
+                    </div>
+
+                    {% if register_errors %}
+                        <ul style="color:#c0392b; font-size:0.85rem; margin-bottom:0.5rem; padding-left:1rem;">
+                            {% for error in register_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+
+                    <button class="btn-submit" type="submit">Create Account</button>
+                    <p class="switch-text">Already have an account? <a href="#" id="switchToLogin">Log in</a></p>
+                </form>
             </div>
         </div>
     </div>
@@ -184,8 +295,10 @@
     <!-- Rent/Buy Budget Swap Script -->
     <script>
         const searchIntent = document.getElementById('searchIntent');
-        const budgetLabel  = document.getElementById('budgetLabel');
+        const budgetLabel = document.getElementById('budgetLabel');
         const searchBudget = document.getElementById('searchBudget');
+
+        const selectedBudget = "{{ selected_budget|default:'any'|escapejs }}";
 
         const rentOptions = [
             { value: 'any', label: 'Any Rent' },
@@ -203,56 +316,60 @@
             { value: '1000000-999999999', label: '$1M+' },
         ];
 
-        function setSelectOptions(selectEl, optionsList) {
+        function setSelectOptions(selectEl, optionsList, selectedValue) {
             selectEl.innerHTML = '';
             for (const opt of optionsList) {
                 const optionEl = document.createElement('option');
                 optionEl.value = opt.value;
                 optionEl.textContent = opt.label;
+                if (opt.value === selectedValue) {
+                    optionEl.selected = true;
+                }
                 selectEl.appendChild(optionEl);
             }
         }
 
         function updateBudgetOptions() {
             const mode = searchIntent.value;
+            const currentValue = searchBudget.value || selectedBudget || 'any';
 
             if (mode === 'rent') {
                 budgetLabel.textContent = 'Monthly Rent';
-                setSelectOptions(searchBudget, rentOptions);
+                setSelectOptions(searchBudget, rentOptions, currentValue);
             } else {
                 budgetLabel.textContent = 'Purchase Price';
-                setSelectOptions(searchBudget, buyOptions);
+                setSelectOptions(searchBudget, buyOptions, currentValue);
             }
         }
 
-        searchIntent.addEventListener('change', updateBudgetOptions);
-        updateBudgetOptions();
-
-        document.getElementById('searchBtn').addEventListener('click', () => {
-            const location = document.getElementById('searchLocation').value;
-            const mode = searchIntent.value;
-            const type = document.getElementById('searchType').value;
-            const budget = searchBudget.value;
-
-            console.log({ location, mode, type, budget });
-        });
+        if (searchIntent && budgetLabel && searchBudget) {
+            searchIntent.addEventListener('change', updateBudgetOptions);
+            updateBudgetOptions();
+        }
     </script>
 
     <!-- Modal Script -->
     <script>
-        const backdrop  = document.getElementById('modalBackdrop');
-        const loginBtn  = document.getElementById('loginBtn');
+        const backdrop = document.getElementById('modalBackdrop');
+        const loginBtn = document.getElementById('loginBtn');
         const signupBtn = document.getElementById('signupBtn');
-        const closeBtn  = document.getElementById('modalClose');
-        const tabLogin  = document.getElementById('tabLogin');
+        const closeBtn = document.getElementById('modalClose');
+        const tabLogin = document.getElementById('tabLogin');
         const tabSignup = document.getElementById('tabSignup');
-        const formLogin  = document.getElementById('formLogin');
+        const formLogin = document.getElementById('formLogin');
         const formSignup = document.getElementById('formSignup');
-        const switchSU   = document.getElementById('switchToSignup');
-        const switchLI   = document.getElementById('switchToLogin');
+        const switchSU = document.getElementById('switchToSignup');
+        const switchLI = document.getElementById('switchToLogin');
 
-        function showModal(mode) { backdrop.classList.add('active'); setTab(mode); }
-        function hideModal()     { backdrop.classList.remove('active'); }
+        function showModal(mode) {
+            backdrop.classList.add('active');
+            setTab(mode);
+        }
+
+        function hideModal() {
+            backdrop.classList.remove('active');
+        }
+
         function setTab(mode) {
             const isLogin = mode === 'login';
             tabLogin.classList.toggle('active', isLogin);
@@ -261,14 +378,59 @@
             formSignup.classList.toggle('hidden', isLogin);
         }
 
-        loginBtn.addEventListener('click',  e => { e.preventDefault(); showModal('login');  });
-        signupBtn.addEventListener('click', e => { e.preventDefault(); showModal('signup'); });
-        closeBtn.addEventListener('click',  hideModal);
-        backdrop.addEventListener('click',  e => { if (e.target === backdrop) hideModal(); });
-        tabLogin.addEventListener('click',  () => setTab('login'));
-        tabSignup.addEventListener('click', () => setTab('signup'));
-        switchSU.addEventListener('click',  e => { e.preventDefault(); setTab('signup'); });
-        switchLI.addEventListener('click',  e => { e.preventDefault(); setTab('login');  });
+        if (loginBtn) {
+            loginBtn.addEventListener('click', e => {
+                e.preventDefault();
+                showModal('login');
+            });
+        }
+
+        if (signupBtn) {
+            signupBtn.addEventListener('click', e => {
+                e.preventDefault();
+                showModal('signup');
+            });
+        }
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', hideModal);
+        }
+
+        if (backdrop) {
+            backdrop.addEventListener('click', e => {
+                if (e.target === backdrop) hideModal();
+            });
+        }
+
+        if (tabLogin) {
+            tabLogin.addEventListener('click', () => setTab('login'));
+        }
+
+        if (tabSignup) {
+            tabSignup.addEventListener('click', () => setTab('signup'));
+        }
+
+        if (switchSU) {
+            switchSU.addEventListener('click', e => {
+                e.preventDefault();
+                setTab('signup');
+            });
+        }
+
+        if (switchLI) {
+            switchLI.addEventListener('click', e => {
+                e.preventDefault();
+                setTab('login');
+            });
+        }
+
+        {% if show_login_modal %}
+            showModal('login');
+        {% endif %}
+
+        {% if show_signup_modal %}
+            showModal('signup');
+        {% endif %}
     </script>
 
 </body>
