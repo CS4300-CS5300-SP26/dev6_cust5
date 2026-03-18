@@ -3,7 +3,7 @@ BearEstate – Feature Overview
 This iteration of our project focuses on improving the housing search experience for students by adding price filtering, integrating external listings, and enhancing the roommate posting interface.
 
 Features Implemented
-1. Price Range Filtering
+1. Price Range Filtering:
 We added a price range filter to help users find housing within their budget more easily.
 A dropdown menu was added to the search bar with options such as:
 •	Any Price
@@ -16,7 +16,7 @@ When the user submits the search:
 •	The system filters properties in the database using those values
 This allows users to quickly narrow down listings that match their budget.
 
-2. RentCast API Integration
+2. RentCast API Integration:
 To expand the number of available listings, we integrated the RentCast API.
 When a user searches by location:
 •	The system sends a request to the API
@@ -30,7 +30,7 @@ Each API listing includes:
 •	Year built
 This ensures users can still find housing options even if the database has limited results.
 
-3. Roommate Posting UI (Frontend Work)
+3. Roommate Posting UI (Frontend Work):
 The roommate posting page was redesigned and expanded.
 Tasks completed:
 •	Created a roommate posting HTML page
@@ -43,7 +43,7 @@ How it works:
 •	Clicking a post expands it to show full details
 •	Clicking again closes the expanded view
 
-4. Testing Approach (TDD)
+4. Testing Approach (TDD):
 We followed a test-driven development (TDD) approach using the red–green–refactor cycle.
 •	Red: Wrote tests before implementation (tests initially failed)
 •	Green: Implemented features until tests passed
@@ -54,7 +54,7 @@ Tests included:
 •	Roommate posting tests (create, view, close, delete, permission checks)
 Overall, the project achieved approximately 91% code coverage.
 
-Files Updated
+Files Updated:
 views.py:
 •	Handles search filtering logic
 •	Applies price range filtering
@@ -70,7 +70,7 @@ models.py:
 •	Updated to support roommate postings and new data fields
 •	Used with Django REST Framework for managing roommate post data
 
-Example Search
+Example Search:
 Input:
 •	Location: Denver
 •	Type: Apartment
@@ -79,18 +79,18 @@ Output:
 •	Matching properties from the database
 •	Additional listings from the RentCast API
 
-Dependencies
+Dependencies:
 Install required packages:
 pip install requests
 pip install djangorestframework
 Django REST Framework is required for handling roommate post data.
 
-AI Usage
+AI Usage:
 Claude AI was used during frontend development to assist with building the roommate posting page, including structuring HTML/CSS and debugging errors. It was also used to research and implement interactive features such as expand/collapse functionality (OpenExpand(), CloseExpand()) and layout techniques like grid-auto-flow: column for the carousel.
 Claude was used consistently for debugging, refining UI behavior, and improving code structure.
 ChatGPT was used for the RentCast API integration, including implementing API calls, troubleshooting issues, and ensuring external property listings were correctly fetched and displayed.
 
-Summary
+Summary:
 This feature improves the overall user experience by allowing users to filter listings by price range, expanding available listings using an external API, and providing a more interactive UI for roommate postings.
 Overall, it helps students find housing more efficiently while giving them more options to choose from.
 
