@@ -2,12 +2,18 @@
 __pycache__/
 *.pyc
 
-# Django local database
-db.sqlite3
+#.env
+.env
 
 # Virtual environments
 .venv/
 venv/
+myenv/
+myproject/myenv/
+
+# Local AI review test files
+diff.txt
+feedback.md
 
 # OS junk
 .DS_Store
