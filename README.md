@@ -1,6 +1,7 @@
 # BearEstate – Feature Overview
 
 This iteration of our project focuses on improving the housing search experience for students by adding price filtering, integrating external listings, and enhancing the roommate posting interface.
+
 Live Website: https://bearestate.me/
 ---
 
