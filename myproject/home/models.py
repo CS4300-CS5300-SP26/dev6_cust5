@@ -40,7 +40,7 @@ class Property(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField(blank=True)
 
-    # NEW (for map)
+    #  ADD HERE (correct place)
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
 
