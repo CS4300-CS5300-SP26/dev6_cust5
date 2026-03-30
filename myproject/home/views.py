@@ -1,23 +1,32 @@
-from django.shortcuts import render
-from .models import RoommatePost
-from rest_framework import viewsets
-from .serializers import RoommatePostSerializer
-from .forms import CustomRegisterForm, RoommatePostForm
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login
-from .models import Property
-from .rentcast_api import get_properties
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-#-------------------------------HTML views--------------------------------#
-# Home page
+
+from rest_framework import viewsets
+
+from .models import RoommatePost, Property
+from .serializers import RoommatePostSerializer
+from .forms import CustomRegisterForm, RoommatePostForm
+from .rentcast_api import get_properties
+
+
+# ------------------------------- HTML views -------------------------------- #
+
+# ✅ SEARCH PAGE (FIXED)
 def search(request):
-    return render(request, "search.html")
-    
-#Search for Roommates
+    properties = Property.objects.all()
+
+    return render(request, "search.html", {
+        "properties": properties
+    })
+
+
+# Search for Roommates
 def roommate_list(request):
     posts = RoommatePost.objects.all().order_by('-date')
     return render(request, 'roommate_postings_view.html', {'posts': posts})
+
 
 @login_required
 def roommate_create(request):
@@ -30,37 +39,44 @@ def roommate_create(request):
             return redirect('roommate_list')
     else:
         form = RoommatePostForm(initial={'date': timezone.now().date()})
+
     return render(request, 'roommate_create.html', {'form': form})
+
 
 @login_required
 def roommate_close(request, post_id):
     post = get_object_or_404(RoommatePost, id=post_id, user=request.user)
+
     if request.method == 'POST':
         post.status = 'closed'
         post.save()
-        return redirect('roommate_list')
+
     return redirect('roommate_list')
+
 
 @login_required
 def roommate_delete(request, post_id):
-    post = get_object_or_404(RoommatePost, id=post_id, user=request.user)  # ensures only owner can delete
+    post = get_object_or_404(RoommatePost, id=post_id, user=request.user)
+
     if request.method == 'POST':
         post.delete()
-        return redirect('roommate_list')
+
     return redirect('roommate_list')
-#-------------------------------API views--------------------------------#
-# Roommate Post API
+
+
+# ------------------------------- API views -------------------------------- #
+
 class RoommatePostViewSet(viewsets.ModelViewSet):
-    '''
-    Recieves all the roommate post objects. Calls the serializer.
-    Displays the data in json format.
-    '''
+    """
+    Receives all roommate post objects and returns JSON via serializer.
+    """
     queryset = RoommatePost.objects.all()
     serializer_class = RoommatePostSerializer
 
-#------------------------------------------------------------------------#
-def index(request):
 
+# ------------------------------- HOME PAGE -------------------------------- #
+
+def index(request):
     context = {}
 
     # ---------------- LOGIN HANDLING ----------------
@@ -78,10 +94,10 @@ def index(request):
             context['show_login_modal'] = True
 
     # ---------------- PROPERTY SEARCH ----------------
-    properties = Property.objects.none() 
+    properties = Property.objects.none()
 
     location = request.GET.get("location", "").strip()
-    listing_type = request.GET.get("intent", "").strip()
+    listing_type = request.GET.get("mode", "").strip()  # ✅ FIXED (was "intent")
     property_type = request.GET.get("type", "").strip()
     price_range = request.GET.get("budget", "").strip()
 
@@ -96,9 +112,9 @@ def index(request):
 
     if location:
         properties = Property.objects.filter(location__icontains=location)
-        #properties = properties.filter(location__icontains=location)
+
         try:
-           api_properties = get_properties(
+            api_properties = get_properties(
                 location,
                 property_type=property_type,
                 min_price=min_price,
@@ -129,6 +145,8 @@ def index(request):
 
     return render(request, "bear_estate_homepage.html", context)
 
+
+# ------------------------------- REGISTER -------------------------------- #
 
 def register(request):
     if request.method == 'POST':
