@@ -157,3 +157,39 @@ class RoommatePostingTest(TestCase):
         self.client.post(f'/roommate-posts/{post.id}/close/')
         post.refresh_from_db()
         self.assertEqual(post.status, 'open')  
+
+
+class PropertyMapTest(TestCase):
+    # A dedicated map endpoint must exist and be reachable
+    def test_property_map_endpoint_returns_200(self):
+        response = self.client.get('/map/', {'location': 'Boulder, CO'})
+        self.assertEqual(response.status_code, 200)
+ 
+   
+    # The response must include coordinate data for each listing
+    @patch('home.views.get_properties')
+    def test_map_response_includes_coordinates_for_listings(self, mock_api):
+        mock_api.return_value = [
+            {
+                'id': 'abc123',
+                'addressLine1': '123 Main St',
+                'city': 'Boulder',
+                'state': 'CO',
+                'price': 1500,
+                'latitude': 40.0150,
+                'longitude': -105.2705,
+                'propertyType': 'Apartment',
+            }
+        ]
+ 
+        response = self.client.get('/map/', {'location': 'Boulder, CO'})
+        self.assertEqual(response.status_code, 200)
+ 
+        # The view must expose map_properties in its context so the template
+        # Each item must carry lat/lng.
+        map_properties = response.context.get('map_properties', [])
+        self.assertTrue(len(map_properties) > 0, "map_properties context key is empty")
+ 
+        first = map_properties[0]
+        self.assertIn('latitude', first,  "latitude missing from map property")
+        self.assertIn('longitude', first, "longitude missing from map property")
