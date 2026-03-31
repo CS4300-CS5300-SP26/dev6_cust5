@@ -29,5 +29,6 @@ urlpatterns = [
     path('roommate-posts/', include('home.urls')),
     path('register/', views.register, name='register'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('map/', views.map_view, name='map'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
