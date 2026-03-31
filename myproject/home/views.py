@@ -10,6 +10,8 @@ from .serializers import RoommatePostSerializer
 from .forms import CustomRegisterForm, RoommatePostForm
 from .rentcast_api import get_properties
 
+import json
+import requests
 
 # ------------------------------- HTML views -------------------------------- #
 
@@ -21,13 +23,13 @@ def search(request):
         "properties": properties
     })
 
-
-# Search for Roommates
+# See all roommate posts
 def roommate_list(request):
     posts = RoommatePost.objects.all().order_by('-date')
     return render(request, 'roommate_postings_view.html', {'posts': posts})
 
-
+# Creates a roommate post 
+# Requires user to be logged in
 @login_required
 def roommate_create(request):
     if request.method == 'POST':
@@ -42,7 +44,8 @@ def roommate_create(request):
 
     return render(request, 'roommate_create.html', {'form': form})
 
-
+# Changes roommate post status to closed
+# Requires user to be logged in (can only close own posts)
 @login_required
 def roommate_close(request, post_id):
     post = get_object_or_404(RoommatePost, id=post_id, user=request.user)
@@ -53,7 +56,8 @@ def roommate_close(request, post_id):
 
     return redirect('roommate_list')
 
-
+# Deletes a roommate post
+# Login required
 @login_required
 def roommate_delete(request, post_id):
     post = get_object_or_404(RoommatePost, id=post_id, user=request.user)
@@ -63,19 +67,7 @@ def roommate_delete(request, post_id):
 
     return redirect('roommate_list')
 
-
-# ------------------------------- API views -------------------------------- #
-
-class RoommatePostViewSet(viewsets.ModelViewSet):
-    """
-    Receives all roommate post objects and returns JSON via serializer.
-    """
-    queryset = RoommatePost.objects.all()
-    serializer_class = RoommatePostSerializer
-
-
-# ------------------------------- HOME PAGE -------------------------------- #
-
+# Home page
 def index(request):
     context = {}
 
@@ -97,7 +89,7 @@ def index(request):
     properties = Property.objects.none()
 
     location = request.GET.get("location", "").strip()
-    listing_type = request.GET.get("mode", "").strip()  # ✅ FIXED (was "intent")
+    listing_type = request.GET.get("mode", "").strip()
     property_type = request.GET.get("type", "").strip()
     price_range = request.GET.get("budget", "").strip()
 
@@ -146,8 +138,7 @@ def index(request):
     return render(request, "bear_estate_homepage.html", context)
 
 
-# ------------------------------- REGISTER -------------------------------- #
-
+# User Register
 def register(request):
     if request.method == 'POST':
         form = CustomRegisterForm(request.POST)
@@ -165,3 +156,73 @@ def register(request):
             })
 
     return redirect('bear_estate_homepage')
+
+# Map view
+def map_view(request):
+    '''
+    Handles input from the search bar on the map page. Uses the US Census Bureau geocoder 
+    to convert the address into coordinates. Passes the coordinates to the template to 
+    display the map centered on the searched location.
+    '''
+    searched_location = None        # holds input from search bar (defaults to none if there is no input)
+
+    # if there is an input (POST request) from the search bar
+    # generates the coordinates with the Census Bureau API (limited to the US)
+    if request.method == 'POST':
+        address = request.POST.get('address')
+        print('ADDRESS RECIEVED')
+        # checks if the address could be found (syntax is correct and location exists)
+        if address:
+            location = geocode_residential(address)
+            if location:
+                searched_location = {
+                    # NOTE: stores the coordinates as context for the template. Can update to work with model later.
+                    # Output will be in json format: {'lat': #, 'lng': #}
+                    'lat': location[0],
+                    'lng': location[1],
+                }
+
+    # Fetches all properties with valid coordinates to display on the map
+    # For displaying all availbe locations in an area. Could incorporate Rentcast API properties here as well.
+    all_properties = Property.objects.exclude(latitude=None, longitude=None)
+
+    # context for the HTML
+    # properties represents markers on the map
+    # searched_location centers the map on the searched address and places a marker (resets on page load)
+    context = {
+        'properties': json.dumps(list(all_properties.values('latitude', 'longitude', 'location'))),
+        'searched_location': json.dumps(searched_location) if searched_location else 'null'
+    }
+    return render(request, 'map.html', context)
+
+# Geocode helper function
+def geocode_residential(address):
+    '''
+    Uses the US Census Bureau API to convert an address to coordinates.
+    Returns a tuple of (latitude, longitude) or None if the address could not be found.
+    '''
+    url = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
+    params = {
+        "address": address,
+        "benchmark": "Public_AR_Current",
+        "format": "json"
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    matches = data["result"]["addressMatches"]
+    if matches:
+        coords = matches[0]["coordinates"]
+        print("COORDS FOUND")
+        return coords["y"], coords["x"]  # lat, lng
+    print("FAILURE")
+    return None
+
+
+# ------------------------------- API views -------------------------------- #
+
+class RoommatePostViewSet(viewsets.ModelViewSet):
+    """
+    Receives all roommate post objects and returns JSON via serializer.
+    """
+    queryset = RoommatePost.objects.all()
+    serializer_class = RoommatePostSerializer
