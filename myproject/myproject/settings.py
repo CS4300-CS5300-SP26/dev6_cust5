@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "test-secret-key")
-DEBUG = os.environ.get("DEBUG", "True") == "True"
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = ["bearestate.me", "www.bearestate.me", "127.0.0.1", "localhost"]
 
@@ -72,10 +72,15 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 
 # Database
 
+# Path name for the database that imports the databse path from a set enviornment variable named "DATABASE_PATH", and falls back to the default database if the
+# file cannot be found
+DATABASE_PATH = os.environ.get("DATABASE_PATH", str(BASE_DIR / "db.sqlite3"))
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        # Set the database pathway to be what path DATABASE_PATH collected from the decleration above
+        'NAME': DATABASE_PATH,
     }
 }
 
@@ -107,6 +112,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Login redirects
 
+LOGIN_URL = '/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
@@ -115,13 +121,3 @@ LOGOUT_REDIRECT_URL = '/'
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-STATICFILES_DIRS = [BASE_DIR.parent / 'static']  #trouble shooting
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-LOGIN_URL = '/'
-
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/' 
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
