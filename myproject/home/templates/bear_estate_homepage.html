@@ -93,6 +93,19 @@
 
                     <div class="search-divider"></div>
 
+                    <div class="search-field">
+                        <label for="searchKeyword">Keyword</label>
+                        <input
+                            id="searchKeyword"
+                            name="q"
+                            type="text"
+                            placeholder="e.g. furnished, near campus..."
+                            value="{{ request.GET.q }}"
+                        >
+                    </div>
+
+                    <div class="search-divider"></div>
+
                     <!-- Rent vs Buy -->
                     <div class="search-field">
                         <label for="searchIntent">Looking to</label>
