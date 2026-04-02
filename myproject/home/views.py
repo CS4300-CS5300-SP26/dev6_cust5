@@ -157,41 +157,80 @@ def register(request):
 
     return redirect('bear_estate_homepage')
 
-# Map view
+# Map View
 def map_view(request):
     '''
-    Handles input from the search bar on the map page. Uses the US Census Bureau geocoder 
-    to convert the address into coordinates. Passes the coordinates to the template to 
-    display the map centered on the searched location.
+    Parameters: request, a list of addresses from home page search (defaults to none is nothing is passed in)
+    Handles user input. Gets coordinates for addresses from RentCast API or geocoding if necessary. Passes coordinates to template for map display.
+    Returns: Displays map view
     '''
-    searched_location = None        # holds input from search bar (defaults to none if there is no input)
+    
+    #searched_location = None         # holds input from search bar (defaults to none if there is no input)
+    map_properties = []              
 
-    # if there is an input (POST request) from the search bar
-    # generates the coordinates with the Census Bureau API (limited to the US)
+    # Handles requests
+    # Gets user input from search bar
+    # 2 instances of input are gotten (City, State).
+
+    # Read params from POST (search bar)
     if request.method == 'POST':
-        address = request.POST.get('address')
-        print('ADDRESS RECIEVED')
-        # checks if the address could be found (syntax is correct and location exists)
-        if address:
-            location = geocode_residential(address)
-            if location:
-                searched_location = {
-                    # NOTE: stores the coordinates as context for the template. Can update to work with model later.
-                    # Output will be in json format: {'lat': #, 'lng': #}
-                    'lat': location[0],
-                    'lng': location[1],
-                }
+        city  = request.POST.get('city', '').strip().title()         # strips whitespace and capitalizes first letter of each word
+        state = request.POST.get('state', '').strip()       # strips whitespace and converts to uppercase
+        print("FROM POST:", str(city), str(state))                # debugging
+    else:
+        city  = ''
+        state = ''
+        
+    # if input was given
+    if city and state:
+        # Concatenates city and state for API call
+        location_str = f"{city}, {state}"
 
-    # Fetches all properties with valid coordinates to display on the map
-    # For displaying all availbe locations in an area. Could incorporate Rentcast API properties here as well.
-    all_properties = Property.objects.exclude(latitude=None, longitude=None)
+        # Fetch listings from RentCast
+        rentcast_results = get_properties(location_str)
 
-    # context for the HTML
-    # properties represents markers on the map
-    # searched_location centers the map on the searched address and places a marker (resets on page load)
+        # Loops through results from API
+        for prop in rentcast_results:
+            # Use coordinates from RentCast if available, otherwise geocode the address
+            lat = prop.get("latitude")
+            lng = prop.get("longitude")
+
+            # Geocodes address if applicable
+            if not lat or not lng:
+                address = prop.get("formattedAddress")
+                if address:
+                    coords = geocode_residential(address)
+                    if coords:
+                        lat, lng = coords
+            # END OF GEOCODING
+
+            # Creates entry for map context (for map markers)
+            if lat and lng:
+                map_properties.append({
+                    'latitude': lat,
+                    'longitude': lng,
+                    'location': prop.get("formattedAddress", "Unknown address"),
+                    'property_type': prop.get("propertyType", "Unknown type"),
+                    'rent': prop.get("price"),
+                    'beds': prop.get("bedrooms"),
+                    'baths': prop.get("bathrooms"),
+                    'sqft': prop.get("squareFootage"),
+                })
+            # END OF MAP ENTRY
+        # END OF RENTCAST FOR
+    # END OF USER INPUT HANDLING
+                 
+    # No user input   
+    else:
+        # Defaults context to empty
+        all_properties = Property.objects.exclude(latitude=None, longitude=None)
+        map_properties = list(all_properties.values('latitude', 'longitude', 'location'))
+
     context = {
-        'properties': json.dumps(list(all_properties.values('latitude', 'longitude', 'location'))),
-        'searched_location': json.dumps(searched_location) if searched_location else 'null'
+        'properties': json.dumps(map_properties),
+        'properties_count': len(map_properties),
+        'city': city,
+        'state': state,
     }
     return render(request, 'map.html', context)
 
@@ -207,14 +246,12 @@ def geocode_residential(address):
         "benchmark": "Public_AR_Current",
         "format": "json"
     }
-    response = requests.get(url, params=params)
+    response = requests.get(url, params=params, timeout=10)
     data = response.json()
     matches = data["result"]["addressMatches"]
     if matches:
         coords = matches[0]["coordinates"]
-        print("COORDS FOUND")
         return coords["y"], coords["x"]  # lat, lng
-    print("FAILURE")
     return None
 
 
