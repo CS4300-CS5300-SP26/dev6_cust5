@@ -67,116 +67,34 @@ def roommate_delete(request, post_id):
 
     return redirect('roommate_list')
 
-# Home page
-def index(request):
-    context = {}
-
-    # ---------------- LOGIN HANDLING ----------------
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-
-        user = authenticate(request, username=username, password=password)
-
-        if user is not None:
-            login(request, user)
-            return redirect('bear_estate_homepage')
-        else:
-            context['login_error'] = 'Invalid username or password.'
-            context['show_login_modal'] = True
-
-    # ---------------- PROPERTY SEARCH ----------------
-    properties = Property.objects.none()
-
-    location = request.GET.get("location", "").strip()
-    listing_type = request.GET.get("mode", "").strip()
-    property_type = request.GET.get("type", "").strip()
-    price_range = request.GET.get("budget", "").strip()
-
-    api_properties = []
-
-    min_price, max_price = None, None
-    if price_range and price_range != "any":
-        try:
-            min_price, max_price = map(int, price_range.split("-"))
-        except ValueError:
-            pass
-
-    if location:
-        properties = Property.objects.filter(location__icontains=location)
-
-        try:
-            api_properties = get_properties(
-                location,
-                property_type=property_type,
-                min_price=min_price,
-                max_price=max_price,
-            )
-        except Exception as e:
-            print("API Error:", e)
-            api_properties = []
-
-    if listing_type in ["rent", "buy"]:
-        properties = properties.filter(listing_type=listing_type)
-
-    if property_type and property_type.lower() != "any type":
-        properties = properties.filter(property_type=property_type.lower())
-
-    if min_price is not None and max_price is not None:
-        properties = properties.filter(price__gte=min_price, price__lte=max_price)
-
-    context.update({
-        "properties": properties,
-        "api_properties": api_properties,
-        "selected_location": location,
-        "selected_intent": listing_type,
-        "selected_type": property_type,
-        "selected_budget": price_range,
-        "result_count": properties.count(),
-    })
-
-    return render(request, "bear_estate_homepage.html", context)
-
-
-# User Register
-def register(request):
-    if request.method == 'POST':
-        form = CustomRegisterForm(request.POST)
-
-        if form.is_valid():
-            form.save()
-            return redirect('bear_estate_homepage')
-        else:
-            errors = [error for field in form for error in field.errors]
-            errors += list(form.non_field_errors())
-
-            return render(request, 'bear_estate_homepage.html', {
-                'show_signup_modal': True,
-                'register_errors': errors,
-            })
-
-    return redirect('bear_estate_homepage')
+#--------------------------------- MAP ------------------------------------------#
 
 # Map View
 def map_view(request):
     '''
-    Parameters: request, a list of addresses from home page search (defaults to none is nothing is passed in)
-    Handles user input. Gets coordinates for addresses from RentCast API or geocoding if necessary. Passes coordinates to template for map display.
+    Parameters: request
+    Handles user input from map page or landing page. Gets coordinates for addresses from RentCast API or geocoding if necessary. Passes coordinates to template for map display.
     Returns: Displays map view
     '''
     
-    #searched_location = None         # holds input from search bar (defaults to none if there is no input)
     map_properties = []              
 
     # Handles requests
-    # Gets user input from search bar
     # 2 instances of input are gotten (City, State).
 
     # Read params from POST (search bar)
     if request.method == 'POST':
-        city  = request.POST.get('city', '').strip().title()         # strips whitespace and capitalizes first letter of each word
-        state = request.POST.get('state', '').strip()       # strips whitespace and converts to uppercase
-        print("FROM POST:", str(city), str(state))                # debugging
+        city  = request.POST.get('city', '').strip().title()         # strips whitespace and capitalizes first letter of each word (for cities with 2 words, e.g Castle Rock, CO)
+        state = request.POST.get('state', '').strip()               # strips whitespace
+        print("FROM POST:", str(city), str(state))                 # debugging
+    
+    # Reads params from GET (redirect from landing page)
+    elif request.method == 'GET':
+        city  = request.GET.get('city', '').strip().title()           # strips whitespace and capitalizes first letter of each word
+        state = request.GET.get('state', '').strip().upper()          # strips whitespace and capitalizes state (assuming use of state abbreviations)
+        print("FROM GET:", city, state)        # debugging
+
+    # User input not given
     else:
         city  = ''
         state = ''
@@ -254,6 +172,106 @@ def geocode_residential(address):
         return coords["y"], coords["x"]  # lat, lng
     return None
 
+# ------------------------ HOME PAGE -------------------------- 
+
+# Home page
+def index(request):
+    context = {}
+
+    # ---------------- LOGIN HANDLING ----------------
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            login(request, user)
+            return redirect('bear_estate_homepage')
+        else:
+            context['login_error'] = 'Invalid username or password.'
+            context['show_login_modal'] = True
+
+    # ---------------- PROPERTY SEARCH ----------------
+    properties = Property.objects.none()
+
+    location = request.GET.get("location", "").strip()
+    if location:
+        parts = location.split(",")
+        city  = parts[0].strip() if len(parts) > 0 else ''
+        state = parts[1].strip() if len(parts) > 1 else ''
+
+    #listing_type = request.GET.get("mode", "").strip()
+    #property_type = request.GET.get("type", "").strip()
+    #price_range = request.GET.get("budget", "").strip()
+    '''
+    api_properties = []
+
+    min_price, max_price = None, None
+    if price_range and price_range != "any":
+        try:
+            min_price, max_price = map(int, price_range.split("-"))
+        except ValueError:
+            pass
+
+    if location:
+        properties = Property.objects.filter(location__icontains=location)
+
+        try:
+            api_properties = get_properties(
+                location,
+                property_type=property_type,
+                min_price=min_price,
+                max_price=max_price,
+            )
+        except Exception as e:
+            print("API Error:", e)
+            api_properties = []
+
+    if listing_type in ["rent", "buy"]:
+        properties = properties.filter(listing_type=listing_type)
+
+    if property_type and property_type.lower() != "any type":
+        properties = properties.filter(property_type=property_type.lower())
+
+    if min_price is not None and max_price is not None:
+        properties = properties.filter(price__gte=min_price, price__lte=max_price)
+
+    context.update({
+        "properties": properties,
+        "api_properties": api_properties,
+        "selected_location": location,
+        "selected_intent": listing_type,
+        "selected_type": property_type,
+        "selected_budget": price_range,
+        "result_count": properties.count(),
+    })
+    '''
+    if location:
+        # Redirects to map page. Passes in parameters for 
+        return redirect(f"/map/?city={city}&state={state}")
+    
+    return render(request, "bear_estate_homepage.html", context)
+
+
+# User Register
+def register(request):
+    if request.method == 'POST':
+        form = CustomRegisterForm(request.POST)
+
+        if form.is_valid():
+            form.save()
+            return redirect('bear_estate_homepage')
+        else:
+            errors = [error for field in form for error in field.errors]
+            errors += list(form.non_field_errors())
+
+            return render(request, 'bear_estate_homepage.html', {
+                'show_signup_modal': True,
+                'register_errors': errors,
+            })
+
+    return redirect('bear_estate_homepage')
 
 # ------------------------------- API views -------------------------------- #
 
