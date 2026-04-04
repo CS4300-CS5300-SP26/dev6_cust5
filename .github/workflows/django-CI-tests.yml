@@ -42,6 +42,8 @@ jobs:
 
       #run the Django test suite and fail if coverage drops below 80 percent
       - name: Run tests
+        env:
+          RENTCAST_API_KEY: dummy-test-key
         run: |
           cd myproject
           coverage run --source='.' manage.py test
