@@ -93,6 +93,19 @@
 
                     <div class="search-divider"></div>
 
+                    <div class="search-field">
+                        <label for="searchKeyword">Keyword</label>
+                        <input
+                            id="searchKeyword"
+                            name="q"
+                            type="text"
+                            placeholder="e.g. furnished, near campus..."
+                            value="{{ request.GET.q }}"
+                        >
+                    </div>
+
+                    <div class="search-divider"></div>
+
                     <!-- Rent vs Buy -->
                     <div class="search-field">
                         <label for="searchIntent">Looking to</label>
@@ -128,8 +141,10 @@
                             <option value="2000-999999" {% if selected_budget == "2000-999999" %}selected{% endif %}>$2,000+</option>
                         </select>
                     </div>
-
-                    <button class="search-btn" id="searchBtn" type="submit">Search →</button>
+                <div class="search-divider"></div>    
+                    <div class="search-btn-wrapper">
+                         <button class="search-btn" id="searchBtn" type="submit">Search →</button>
+                    </div>
                 </form>
 
             </div>

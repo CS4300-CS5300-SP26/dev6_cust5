@@ -2,14 +2,19 @@
 __pycache__/
 *.pyc
 
-#.env
+# Environment files
 .env
+myproject/.env
 
 # Virtual environments
 .venv/
 venv/
 myenv/
 myproject/myenv/
+
+# Runtime and generated files
+myproject/db.sqlite3
+myproject/staticfiles/
 
 # Local AI review test files
 diff.txt
