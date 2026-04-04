@@ -26,10 +26,6 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 RENTCAST_API_KEY = os.environ.get("RENTCAST_API_KEY")
 
 
-# Application definition
-DEBUG = True
-
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
