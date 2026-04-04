@@ -104,8 +104,8 @@ def map_view(request):
         # Concatenates city and state for API call
         location_str = f"{city}, {state}"
 
-        # Fetch listings from RentCast
-        rentcast_results = get_properties(location_str)
+        # Fetch filtered listings from RentCast
+        rentcast_results = fetch_filtered_properties(location_str, listing_type, property_type, price_range)
 
         # Loops through results from API
         for prop in rentcast_results:
@@ -172,6 +172,31 @@ def geocode_residential(address):
         return coords["y"], coords["x"]  # lat, lng
     return None
 
+# FILTER FUNCTION FOR MAP VIEW (taken from index)
+def fetch_filtered_properties(location, listing_type=None, property_type=None, price_range=None):
+    '''
+    Parameters: a location, listing type, property, type and price range
+    Will filter out properties from RentCast API with the filters passed in.
+    Return: Returns a list of RentCast properties
+    '''
+    min_price, max_price = None, None
+    if price_range and price_range != "any":
+        try:
+            min_price, max_price = map(int, price_range.split("-"))
+        except ValueError:
+            pass
+
+    try:
+        return get_properties(
+            location,
+            property_type=property_type,
+            min_price=min_price,
+            max_price=max_price,
+        )
+    except Exception as e:
+        print("API Error:", e)
+        return []
+
 # ------------------------ HOME PAGE -------------------------- 
 
 # Home page
@@ -201,33 +226,11 @@ def index(request):
         city  = parts[0].strip() if len(parts) > 0 else ''
         state = parts[1].strip() if len(parts) > 1 else ''
 
-    #listing_type = request.GET.get("mode", "").strip()
-    #property_type = request.GET.get("type", "").strip()
-    #price_range = request.GET.get("budget", "").strip()
-    '''
-    api_properties = []
+    listing_type = request.GET.get("mode", "").strip()
+    property_type = request.GET.get("type", "").strip()
+    price_range = request.GET.get("budget", "").strip()
 
-    min_price, max_price = None, None
-    if price_range and price_range != "any":
-        try:
-            min_price, max_price = map(int, price_range.split("-"))
-        except ValueError:
-            pass
-
-    if location:
-        properties = Property.objects.filter(location__icontains=location)
-
-        try:
-            api_properties = get_properties(
-                location,
-                property_type=property_type,
-                min_price=min_price,
-                max_price=max_price,
-            )
-        except Exception as e:
-            print("API Error:", e)
-            api_properties = []
-
+    ''' SEARCHES PROPERTY MODEL
     if listing_type in ["rent", "buy"]:
         properties = properties.filter(listing_type=listing_type)
 
@@ -249,7 +252,7 @@ def index(request):
     '''
     if location:
         # Redirects to map page. Passes in parameters for 
-        return redirect(f"/map/?city={city}&state={state}")
+        return redirect(f"/map/?city={city}&state={state}&intent={listing_type}&type={property_type}&budget={price_range}")
     
     return render(request, "bear_estate_homepage.html", context)
 
