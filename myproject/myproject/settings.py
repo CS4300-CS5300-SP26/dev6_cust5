@@ -27,6 +27,8 @@ RENTCAST_API_KEY = os.environ.get("RENTCAST_API_KEY")
 
 
 # Application definition
+DEBUG = True
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -94,6 +96,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
 
 # Internationalization
 
@@ -106,7 +112,6 @@ USE_TZ = True
 # Static files
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR.parent / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 
@@ -121,3 +126,5 @@ LOGOUT_REDIRECT_URL = '/'
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+

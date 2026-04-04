@@ -9,15 +9,20 @@ from .models import Property
 from .rentcast_api import get_properties
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-#-------------------------------HTML views--------------------------------#
+from django.db.models import Q
+
+# -------------------------------HTML views--------------------------------#
+
 # Home page
 def search(request):
     return render(request, "search.html")
-    
-#Search for Roommates
+
+
+# Search for Roommates
 def roommate_list(request):
     posts = RoommatePost.objects.all().order_by('-date')
     return render(request, 'roommate_postings_view.html', {'posts': posts})
+
 
 @login_required
 def roommate_create(request):
@@ -32,6 +37,7 @@ def roommate_create(request):
         form = RoommatePostForm(initial={'date': timezone.now().date()})
     return render(request, 'roommate_create.html', {'form': form})
 
+
 @login_required
 def roommate_close(request, post_id):
     post = get_object_or_404(RoommatePost, id=post_id, user=request.user)
@@ -41,15 +47,18 @@ def roommate_close(request, post_id):
         return redirect('roommate_list')
     return redirect('roommate_list')
 
+
 @login_required
 def roommate_delete(request, post_id):
-    post = get_object_or_404(RoommatePost, id=post_id, user=request.user)  # ensures only owner can delete
+    post = get_object_or_404(RoommatePost, id=post_id, user=request.user)
     if request.method == 'POST':
         post.delete()
         return redirect('roommate_list')
     return redirect('roommate_list')
-#-------------------------------API views--------------------------------#
-# Roommate Post API
+
+
+# -------------------------------API views--------------------------------#
+
 class RoommatePostViewSet(viewsets.ModelViewSet):
     '''
     Recieves all the roommate post objects. Calls the serializer.
@@ -58,7 +67,9 @@ class RoommatePostViewSet(viewsets.ModelViewSet):
     queryset = RoommatePost.objects.all()
     serializer_class = RoommatePostSerializer
 
-#------------------------------------------------------------------------#
+
+# ------------------------------------------------------------------------#
+
 def index(request):
 
     context = {}
@@ -78,7 +89,15 @@ def index(request):
             context['show_login_modal'] = True
 
     # ---------------- PROPERTY SEARCH ----------------
-    properties = Property.objects.none() 
+    properties = Property.objects.all()
+
+    query = request.GET.get('q', '').strip()
+    if query:
+        properties = properties.filter(
+            Q(title__icontains=query) |
+            Q(description__icontains=query) |
+            Q(location__icontains=query)
+        )
 
     location = request.GET.get("location", "").strip()
     listing_type = request.GET.get("intent", "").strip()
@@ -95,10 +114,9 @@ def index(request):
             pass
 
     if location:
-        properties = Property.objects.filter(location__icontains=location)
-        #properties = properties.filter(location__icontains=location)
+        properties = properties.filter(location__icontains=location)
         try:
-           api_properties = get_properties(
+            api_properties = get_properties(
                 location,
                 property_type=property_type,
                 min_price=min_price,
