@@ -2,13 +2,15 @@ from django.db import models
 from django.contrib.auth.models import User
 
 # Create your models here.
+
 class RoommatePost(models.Model):
     '''
     user = An instance from the Django built-in User class
-    date = Date of post, using date from datetime package (Format: date(YYYY, MM, DD))
+    date = Date of post
     message = Content of the roommate post
     status = Open or closed status of post
     '''
+
     class Status(models.TextChoices):
         ''' 
         Limits choices in status field to 'open' and 'closed'
@@ -17,7 +19,7 @@ class RoommatePost(models.Model):
         CLOSED = 'closed', 'Closed'
     
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    message = models.CharField(max_length = 500)
+    message = models.CharField(max_length=500)
     date = models.DateField()
 
     status = models.CharField(
@@ -25,8 +27,10 @@ class RoommatePost(models.Model):
         choices=Status.choices,
         default=Status.OPEN,
     )
+
     rent = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)      
     property_type = models.CharField(max_length=20, blank=True, default='')  
+
 
 class Property(models.Model):
     title = models.CharField(max_length=200)
@@ -35,6 +39,10 @@ class Property(models.Model):
     property_type = models.CharField(max_length=20)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField(blank=True)
+
+    #  ADD HERE (correct place)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
 
     def __str__(self):
         return self.title
