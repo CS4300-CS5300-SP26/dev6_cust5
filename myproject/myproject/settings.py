@@ -12,11 +12,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "test-secret-key")
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ["bearestate.me", "www.bearestate.me", "127.0.0.1", "localhost"]
+ALLOWED_HOSTS = ["bearestate.me", "www.bearestate.me", "premain.bearestate.me", "127.0.0.1", "localhost", ]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://bearestate.me",
     "https://www.bearestate.me",
+    "https://premain.bearestate.me",
 ]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -108,8 +109,11 @@ USE_TZ = True
 # Static files
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = Path(os.environ.get("STATIC_ROOT_PATH", str(BASE_DIR / "staticfiles")))
 
+# Media Files
+MEDIA_URL = "/media/"
+MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT_PATH", str(BASE_DIR / "media")))
 
 # Login redirects
 
