@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'home',
     'behave_django',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -123,8 +124,17 @@ LOGOUT_REDIRECT_URL = '/'
 
 
 # Default primary key field type
-
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Use the Django Channels features
+ASGI_APPLICATION = 'myproject.asgi.application'
 
+# Redis channel layer
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
