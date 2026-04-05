@@ -210,6 +210,11 @@
                         <p><strong>Bathrooms:</strong> {{ property.bathrooms }}</p>
                         <p><strong>Size:</strong> {{ property.squareFootage }} sqft</p>
                         <!--<p><strong>Year Built:</strong> {{ property.yearBuilt }}</p>-->
+
+                        #Open a new chat
+                        <a href="/chat/{{ posting.id }}/">Message Owner →</a>
+                            Message Owner →
+                        </a>
                     </div>
                 {% endfor %}
             </div>
