@@ -16,6 +16,7 @@ import chat.routing
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'myproject.settings')
 
 #Set the websocket applications for running the IM Feature
+#Routes the sockets to send and receive messages
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
     "websocket": AuthMiddlewareStack(
