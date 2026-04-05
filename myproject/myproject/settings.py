@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'home',
     'behave_django',
     'channels',
+    'chat',
 ]
 
 MIDDLEWARE = [
@@ -111,6 +112,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = Path(os.environ.get("STATIC_ROOT_PATH", str(BASE_DIR / "staticfiles")))
+STATICFILES_DIRS = [BASE_DIR / 'home' / 'static']
 
 # Media Files
 MEDIA_URL = "/media/"

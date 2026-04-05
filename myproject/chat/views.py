@@ -1,3 +1,8 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
 
-# Create your views here.
+@login_required
+def chat_room(request, posting_id):
+    return render(request, 'chat/chat_room.html', {
+        'posting_id': posting_id
+    })

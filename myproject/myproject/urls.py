@@ -30,4 +30,5 @@ urlpatterns = [
     path('register/', views.register, name='register'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('map/', views.map_view, name='map'),
-    ]
+    path('chat/', include('chat.urls')),
+    ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
