@@ -86,12 +86,18 @@ def map_view(request):
     if request.method == 'POST':
         city  = request.POST.get('city', '').strip().title()         # strips whitespace and capitalizes first letter of each word (for cities with 2 words, e.g Castle Rock, CO)
         state = request.POST.get('state', '').strip()               # strips whitespace
+        listing_type  = request.POST.get('intent', '').strip()
+        property_type = request.POST.get('type', '').strip()
+        price_range   = request.POST.get('budget', '').strip()
         print("FROM POST:", str(city), str(state))                 # debugging
     
     # Reads params from GET (redirect from landing page)
     elif request.method == 'GET':
         city  = request.GET.get('city', '').strip().title()           # strips whitespace and capitalizes first letter of each word
         state = request.GET.get('state', '').strip().upper()          # strips whitespace and capitalizes state (assuming use of state abbreviations)
+        listing_type  = request.GET.get('intent', '').strip()
+        property_type = request.GET.get('type', '').strip()
+        price_range   = request.GET.get('budget', '').strip()
         print("FROM GET:", city, state)        # debugging
 
     # User input not given
