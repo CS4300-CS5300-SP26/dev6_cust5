@@ -212,9 +212,9 @@
                         <!--<p><strong>Year Built:</strong> {{ property.yearBuilt }}</p>-->
 
                         #Open a new chat
-                        <a href="/chat/{{ posting.id }}/">Message Owner →</a>
-                            Message Owner →
-                        </a>
+                        <button class="btn-login" onclick="window.open('/chat/{{ posting.id }}/', 'chat', 'width=420,height=600')">
+                            Chat →
+                        </button>
                     </div>
                 {% endfor %}
             </div>
