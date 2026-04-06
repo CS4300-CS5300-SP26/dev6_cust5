@@ -16,7 +16,7 @@ ALLOWED_HOSTS = ["bearestate.me", "www.bearestate.me", "127.0.0.1", "localhost"]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://bearestate.me",
-    "https://www.bearestate.me",
+    "https://www.bearestate.me", "http://127.0.0.1:8000", "http://localhost:8000",
 ]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -125,3 +125,14 @@ LOGOUT_REDIRECT_URL = '/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# In development, codes print to the terminal instead of being sent.
+# In production, swap EMAIL_BACKEND and fill in the SMTP settings below.
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.console.EmailBackend'   # dev default
+)
+EMAIL_HOST     = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT     = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS  = True
+EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
