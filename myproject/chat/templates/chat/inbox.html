@@ -1,0 +1,23 @@
+{% load static %}
+<h2>My Listing Chats</h2>
+{% for item in posts_with_chats %}
+    <p>
+        Posting #{{ item.post.id }} — {{ item.post.message|truncatechars:50 }}
+        ({{ item.message_count }} message{{ item.message_count|pluralize }})
+        <a href="/chat/{{ item.post.id }}/">Open Chat -></a>
+    </p>
+{% empty %}
+    <p>You have no active listings.</p>
+{% endfor %}
+
+<h2>Chats I'm In</h2>
+{% for item in participated_chats %}
+    <p>
+        Posting #{{ item.posting_id }}
+        — last message: "{{ item.last_message.content|truncatechars:40 }}"
+        ({{ item.message_count }} message{{ item.message_count|pluralize }})
+        <a href="/chat/{{ item.posting_id }}/">Open Chat -></a>
+    </p>
+{% empty %}
+    <p>You haven't messaged any listings yet.</p>
+{% endfor %}
