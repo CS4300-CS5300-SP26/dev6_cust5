@@ -9,15 +9,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.posting_id = self.scope['url_route']['kwargs']['posting_id']
         self.room_group = f'chat_posting_{self.posting_id}'
-
-        # Join the room group in Redis
-        await self.channel_layer.group_add(
-            self.room_group,
-            self.channel_name
-        )
+        await self.channel_layer.group_add(self.room_group, self.channel_name)
         await self.accept()
 
-        # Send existing message history on connect
+        # Send history after connection is accepted
         history = await self.get_history()
         for msg in history:
             await self.send(text_data=json.dumps(msg))
@@ -70,11 +65,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     @database_sync_to_async
-    def get_history(self):
-        messages = Message.objects.filter(posting_id=self.posting_id)
-        return [
-            {
-                'user_message' if m.sender_label == 'user' else 'bot_reply': m.content
-            }
-            for m in messages
-        ]
+        def get_history(self):
+            messages = Message.objects.filter(posting_id=self.posting_id)
+            result = []
+            for m in messages:
+                if m.sender_label == 'user':
+                    result.append({'user_message': m.content, 'bot_reply': ''})
+                else:
+                    result.append({'user_message': '', 'bot_reply': m.content})
+            return result
