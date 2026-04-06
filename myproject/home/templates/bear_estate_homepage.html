@@ -38,6 +38,7 @@
             <div class="nav-buttons">
                 {% if request.user.is_authenticated %}
                   <span class="btn-login">Hi, {{ request.user.username }}</span>
+                  
                     <a href="/chat/inbox/" class="btn-login">My Chats</a>
                     <form method="post" action="/logout/" style="display:inline;">
                         {% csrf_token %}
