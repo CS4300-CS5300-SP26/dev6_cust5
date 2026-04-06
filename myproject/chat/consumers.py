@@ -22,36 +22,36 @@ class ChatConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         raw_message = data['message']
         clean_message = filter_message(raw_message)
-        await self.save_message('user', clean_message)
-        bot_reply = "Thanks for your message! The owner will be in touch shortly."
-        await self.save_message('bot', bot_reply)
-        await self.channel_layer.group_send(self.room_group, {
-            'type': 'chat_message',
-            'user_message': clean_message,
-            'bot_reply': bot_reply,
-        })
+        
+        user = self.scope['user']
+        sender_name = user.username if user.is_authenticated else 'Anonymous'
+        
+        await self.save_message(user, clean_message)
+        await self.channel_layer.group_send(
+            self.room_group,
+            {
+                'type': 'chat_message',
+                'message': clean_message,
+                'sender': sender_name,
+            }
+        )
 
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
-            'user_message': event['user_message'],
-            'bot_reply': event['bot_reply'],
+            'message': event['message'],
+            'sender': event['sender'],
         }))
 
     @database_sync_to_async
-    def save_message(self, sender_label, content):
+    def save_message(self, user, content):
         Message.objects.create(
             posting_id=self.posting_id,
-            sender_label=sender_label,
+            sender=user if user.is_authenticated else None,
+            sender_label=user.username if user.is_authenticated else 'anonymous',
             content=content
         )
 
     @database_sync_to_async
     def get_history(self):
         messages = Message.objects.filter(posting_id=self.posting_id)
-        result = []
-        for m in messages:
-            if m.sender_label == 'user':
-                result.append({'user_message': m.content, 'bot_reply': ''})
-            else:
-                result.append({'user_message': '', 'bot_reply': m.content})
-        return result
+        return [{'message': m.content, 'sender': m.sender_label} for m in messages]

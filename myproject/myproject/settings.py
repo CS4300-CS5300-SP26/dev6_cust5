@@ -10,14 +10,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "test-secret-key")
-DEBUG = os.environ.get("DEBUG", "False") == "True"
+#SECRET_KEY='%@fg1g!5bi2+$g9jasg462z92o6*sm(32@f@w703bd&v8r8o4%'
+#DJANGO_SECRET_KEY='%@fg1g!5bi2+$g9jasg462z92o6*sm(32@f@w703bd&v8r8o4%'
+DEBUG = "TRUE"
 
 ALLOWED_HOSTS = ["bearestate.me", "www.bearestate.me", "premain.bearestate.me", "127.0.0.1", "localhost", ]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://bearestate.me",
     "https://www.bearestate.me",
-    "https://premain.bearestate.me",
+    "https://premain.bearestate.me", "http://127.0.0.1:8000/"
 ]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -28,6 +30,7 @@ RENTCAST_API_KEY = os.environ.get("RENTCAST_API_KEY")
 
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

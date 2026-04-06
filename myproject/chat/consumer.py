@@ -65,7 +65,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     @database_sync_to_async
-        def get_history(self):
+    def get_history(self):
             messages = Message.objects.filter(posting_id=self.posting_id)
             result = []
             for m in messages:

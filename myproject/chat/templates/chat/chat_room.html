@@ -73,17 +73,17 @@
     <script>
         const postingId = {{ posting_id }};
         const socket = new WebSocket(`ws://${window.location.host}/ws/chat/${postingId}/`);
+        const currentUser = "{{ request.user.username }}";
 
         socket.onmessage = function(e) {
             const data = JSON.parse(e.data);
             const log = document.getElementById('chatLog');
-
-            if (data.user_message) {
-                log.innerHTML += `<div class="msg user">${data.user_message}</div>`;
-            }
-            if (data.bot_reply) {
-                log.innerHTML += `<div class="msg bot">${data.bot_reply}</div>`;
-            }
+            const isMe = data.sender === currentUser;
+            log.innerHTML += `
+                <div class="msg ${isMe ? 'user' : 'bot'}">
+                    <small style="opacity:0.6;font-size:0.75rem">${data.sender}</small><br>
+                    ${data.message}
+                </div>`;
             log.scrollTop = log.scrollHeight;
         };
 
