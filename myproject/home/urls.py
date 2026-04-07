@@ -1,5 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
+from django.conf import settings
+from django.conf.urls.static import static
 from . import views
 
 # Routers for API view
@@ -14,4 +16,4 @@ urlpatterns = [
     path('api/', include(router.urls)),
     path('search/', views.search, name='search'),
     
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
