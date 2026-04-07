@@ -31,7 +31,9 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('map/', views.map_view, name='map'),
     path('auth/2fa/setup/', views.setup_2fa, name='2fa_setup'),
+    path('chat/', include('chat.urls')),
     ]
     
 
 static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
+
