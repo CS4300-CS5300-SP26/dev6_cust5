@@ -262,7 +262,7 @@ class InstantMessagingTests(TestCase):
     def test_chat_room_accessible_for_authenticated_user(self):
         """Authenticated user can open the chat room for a posting."""
         post = self._create_post()
-        response = self.client.get(f'/chat/{post.id}/')
+        response = self.client.get(f'/chat/{post.id}/{self.alice.id}/')
         self.assertEqual(response.status_code, 200)
 
     def test_message_record_persists_to_database(self):

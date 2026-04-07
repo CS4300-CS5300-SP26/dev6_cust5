@@ -487,6 +487,7 @@
         const expandBackdrop = document.getElementById('cardExpandBackdrop');
         const expandClose    = document.getElementById('cardExpandClose');
         const csrfToken      = '{{ csrf_token }}';
+        const currentUserId  = {{ request.user.id|default:"0" }};
 
         function openExpand(card) {
             const name      = card.dataset.name;
@@ -522,7 +523,7 @@
                         <button type="submit" class="btn-delete-post">Delete</button>
                     </form>`;
             } else {
-                actions += `<button class="card-expand-cta" onclick="window.open('/chat/${postId}/', 'chat', 'width=420,height=600')">Chat →</button>`;
+                actions += `<button class="card-expand-cta" onclick="window.open('/chat/${postId}/${currentUserId}/', 'chat', 'width=420,height=600')">Chat →</button>`;
             }
             document.getElementById('expandActions').innerHTML = actions;
 
