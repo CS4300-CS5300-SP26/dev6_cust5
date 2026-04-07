@@ -1,29 +1,39 @@
-from django.shortcuts import render
-from .models import RoommatePost
-from rest_framework import viewsets
-from .serializers import RoommatePostSerializer
-from .forms import CustomRegisterForm, RoommatePostForm
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login
-from .models import Property
-from .rentcast_api import get_properties
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-from django.db.models import Q
 
-# -------------------------------HTML views--------------------------------#
+from rest_framework import viewsets
 
+from .models import RoommatePost, Property
+from .serializers import RoommatePostSerializer
+from .forms import CustomRegisterForm, RoommatePostForm
+from .rentcast_api import get_properties
+
+import json
+import requests
+
+# ------------------------------- HTML views -------------------------------- #
+
+#
+import pyotp
+import qrcode, io, base64
+#-------------------------------HTML views--------------------------------#
 # Home page
 def search(request):
-    return render(request, "search.html")
+    properties = Property.objects.all()
 
+    return render(request, "search.html", {
+        "properties": properties
+    })
 
-# Search for Roommates
+# See all roommate posts
 def roommate_list(request):
     posts = RoommatePost.objects.all().order_by('-date')
     return render(request, 'roommate_postings_view.html', {'posts': posts})
 
-
+# Creates a roommate post 
+# Requires user to be logged in
 @login_required
 def roommate_create(request):
     if request.method == 'POST':
@@ -35,43 +45,172 @@ def roommate_create(request):
             return redirect('roommate_list')
     else:
         form = RoommatePostForm(initial={'date': timezone.now().date()})
+
     return render(request, 'roommate_create.html', {'form': form})
 
-
+# Changes roommate post status to closed
+# Requires user to be logged in (can only close own posts)
 @login_required
 def roommate_close(request, post_id):
     post = get_object_or_404(RoommatePost, id=post_id, user=request.user)
+
     if request.method == 'POST':
         post.status = 'closed'
         post.save()
-        return redirect('roommate_list')
+
     return redirect('roommate_list')
 
-
+# Deletes a roommate post
+# Login required
 @login_required
 def roommate_delete(request, post_id):
     post = get_object_or_404(RoommatePost, id=post_id, user=request.user)
+
     if request.method == 'POST':
         post.delete()
-        return redirect('roommate_list')
+
     return redirect('roommate_list')
 
+#--------------------------------- MAP ------------------------------------------#
 
-# -------------------------------API views--------------------------------#
-
-class RoommatePostViewSet(viewsets.ModelViewSet):
+# Map View
+def map_view(request):
     '''
-    Recieves all the roommate post objects. Calls the serializer.
-    Displays the data in json format.
+    Parameters: request
+    Handles user input from map page or landing page. Gets coordinates for addresses from RentCast API or geocoding if necessary. Passes coordinates to template for map display.
+    Returns: Displays map view
     '''
-    queryset = RoommatePost.objects.all()
-    serializer_class = RoommatePostSerializer
+    
+    map_properties = []              
 
+    # Handles requests
+    # 2 instances of input are gotten (City, State).
 
-# ------------------------------------------------------------------------#
+    # Read params from POST (search bar)
+    if request.method == 'POST':
+        city  = request.POST.get('city', '').strip().title()         # strips whitespace and capitalizes first letter of each word (for cities with 2 words, e.g Castle Rock, CO)
+        state = request.POST.get('state', '').strip()               # strips whitespace
+        listing_type  = request.POST.get('intent', '').strip()
+        property_type = request.POST.get('type', '').strip()
+        price_range   = request.POST.get('budget', '').strip()
+        print("FROM POST:", str(city), str(state))                 # debugging
+    
+    # Reads params from GET (redirect from landing page)
+    elif request.method == 'GET':
+        city  = request.GET.get('city', '').strip().title()           # strips whitespace and capitalizes first letter of each word
+        state = request.GET.get('state', '').strip().upper()          # strips whitespace and capitalizes state (assuming use of state abbreviations)
+        listing_type  = request.GET.get('intent', '').strip()
+        property_type = request.GET.get('type', '').strip()
+        price_range   = request.GET.get('budget', '').strip()
+        print("FROM GET:", city, state)        # debugging
 
+    # User input not given
+    else:
+        city  = ''
+        state = ''
+        
+    # if input was given
+    if city and state:
+        # Concatenates city and state for API call
+        location_str = f"{city}, {state}"
+
+        # Fetch filtered listings from RentCast
+        rentcast_results = fetch_filtered_properties(location_str, listing_type, property_type, price_range)
+
+        # Loops through results from API
+        for prop in rentcast_results:
+            # Use coordinates from RentCast if available, otherwise geocode the address
+            lat = prop.get("latitude")
+            lng = prop.get("longitude")
+
+            # Geocodes address if applicable
+            if not lat or not lng:
+                address = prop.get("formattedAddress")
+                if address:
+                    coords = geocode_residential(address)
+                    if coords:
+                        lat, lng = coords
+            # END OF GEOCODING
+
+            # Creates entry for map context (for map markers)
+            if lat and lng:
+                map_properties.append({
+                    'latitude': lat,
+                    'longitude': lng,
+                    'location': prop.get("formattedAddress", "Unknown address"),
+                    'property_type': prop.get("propertyType", "Unknown type"),
+                    'rent': prop.get("price"),
+                    'beds': prop.get("bedrooms"),
+                    'baths': prop.get("bathrooms"),
+                    'sqft': prop.get("squareFootage"),
+                })
+            # END OF MAP ENTRY
+        # END OF RENTCAST FOR
+    # END OF USER INPUT HANDLING
+                 
+    # No user input   
+    else:
+        # Defaults context to empty
+        all_properties = Property.objects.exclude(latitude=None, longitude=None)
+        map_properties = list(all_properties.values('latitude', 'longitude', 'location'))
+
+    context = {
+        'properties': json.dumps(map_properties),
+        'properties_count': len(map_properties),
+        'city': city,
+        'state': state,
+    }
+    return render(request, 'map.html', context)
+
+# Geocode helper function
+def geocode_residential(address):
+    '''
+    Uses the US Census Bureau API to convert an address to coordinates.
+    Returns a tuple of (latitude, longitude) or None if the address could not be found.
+    '''
+    url = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
+    params = {
+        "address": address,
+        "benchmark": "Public_AR_Current",
+        "format": "json"
+    }
+    response = requests.get(url, params=params, timeout=10)
+    data = response.json()
+    matches = data["result"]["addressMatches"]
+    if matches:
+        coords = matches[0]["coordinates"]
+        return coords["y"], coords["x"]  # lat, lng
+    return None
+
+# FILTER FUNCTION FOR MAP VIEW (taken from index)
+def fetch_filtered_properties(location, listing_type=None, property_type=None, price_range=None):
+    '''
+    Parameters: a location, listing type, property, type and price range
+    Will filter out properties from RentCast API with the filters passed in.
+    Return: Returns a list of RentCast properties
+    '''
+    min_price, max_price = None, None
+    if price_range and price_range != "any":
+        try:
+            min_price, max_price = map(int, price_range.split("-"))
+        except ValueError:
+            pass
+
+    try:
+        return get_properties(
+            location,
+            property_type=property_type,
+            min_price=min_price,
+            max_price=max_price,
+        )
+    except Exception as e:
+        print("API Error:", e)
+        return []
+
+# ------------------------ HOME PAGE -------------------------- 
+
+# Home page
 def index(request):
-
     context = {}
 
     # ---------------- LOGIN HANDLING ----------------
@@ -89,43 +228,19 @@ def index(request):
             context['show_login_modal'] = True
 
     # ---------------- PROPERTY SEARCH ----------------
-    properties = Property.objects.all()
-
-    query = request.GET.get('q', '').strip()
-    if query:
-        properties = properties.filter(
-            Q(title__icontains=query) |
-            Q(description__icontains=query) |
-            Q(location__icontains=query)
-        )
+    properties = Property.objects.none()
 
     location = request.GET.get("location", "").strip()
-    listing_type = request.GET.get("intent", "").strip()
+    if location:
+        parts = location.split(",")
+        city  = parts[0].strip() if len(parts) > 0 else ''
+        state = parts[1].strip() if len(parts) > 1 else ''
+
+    listing_type = request.GET.get("mode", "").strip()
     property_type = request.GET.get("type", "").strip()
     price_range = request.GET.get("budget", "").strip()
 
-    api_properties = []
-
-    min_price, max_price = None, None
-    if price_range and price_range != "any":
-        try:
-            min_price, max_price = map(int, price_range.split("-"))
-        except ValueError:
-            pass
-
-    if location:
-        properties = properties.filter(location__icontains=location)
-        try:
-            api_properties = get_properties(
-                location,
-                property_type=property_type,
-                min_price=min_price,
-                max_price=max_price,
-            )
-        except Exception as e:
-            print("API Error:", e)
-            api_properties = []
-
+    ''' SEARCHES PROPERTY MODEL
     if listing_type in ["rent", "buy"]:
         properties = properties.filter(listing_type=listing_type)
 
@@ -144,24 +259,123 @@ def index(request):
         "selected_budget": price_range,
         "result_count": properties.count(),
     })
-
+    '''
+    if location:
+        # Redirects to map page. Passes in parameters for 
+        return redirect(f"/map/?city={city}&state={state}&intent={listing_type}&type={property_type}&budget={price_range}")
+    
     return render(request, "bear_estate_homepage.html", context)
 
 
+# User Register
 def register(request):
     if request.method == 'POST':
         form = CustomRegisterForm(request.POST)
-
+ 
         if form.is_valid():
-            form.save()
-            return redirect('bear_estate_homepage')
+            user = form.save()
+            login(request, user)
+            return redirect('2fa_setup')
         else:
             errors = [error for field in form for error in field.errors]
             errors += list(form.non_field_errors())
-
+ 
             return render(request, 'bear_estate_homepage.html', {
                 'show_signup_modal': True,
                 'register_errors': errors,
             })
-
+ 
     return redirect('bear_estate_homepage')
+
+# ------------------------------- API views -------------------------------- #
+
+class RoommatePostViewSet(viewsets.ModelViewSet):
+    """
+    Receives all roommate post objects and returns JSON via serializer.
+    """
+    queryset = RoommatePost.objects.all()
+    serializer_class = RoommatePostSerializer
+ 
+# Two-Factor Auth
+@login_required
+def setup_2fa(request):
+    """
+    GET -> render setup page with both TOTP and email options.
+    POST method=totp_verify -> confirm TOTP code, save TOTP as 2FA method.
+    POST method=email_send -> generate + email a 6-digit code, re-render for verify step.
+    POST method=email_verify -> confirm emailed code, save email as 2FA method.
+    """
+    import qrcode, io, base64, random
+    from django.core.mail import send_mail
+ 
+    def _totp_context():
+        secret = request.session.get('totp_secret') or pyotp.random_base32()
+        request.session['totp_secret'] = secret
+        totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(
+            name=request.user.username, issuer_name='BearEstate'
+        )
+        qr_img = qrcode.make(totp_uri)
+        buf = io.BytesIO()
+        qr_img.save(buf, format='PNG')
+        return {
+            'qr_code': base64.b64encode(buf.getvalue()).decode(),
+            'short_key': ' '.join(secret[i:i+4] for i in range(0, len(secret), 4)),
+            'totp_secret': secret,
+        }
+ 
+    if request.method == 'POST':
+        method = request.POST.get('method')
+ 
+        # TOTP verify
+        if method == 'totp_verify':
+            secret = request.session.get('totp_secret', '')
+            if secret and pyotp.TOTP(secret).verify(request.POST.get('otp_code', '')):
+                p = request.user.profile
+                p.totp_secret = secret
+                p.totp_enabled = True
+                p.two_fa_method = 'totp'
+                p.save()
+                return redirect('bear_estate_homepage')
+            ctx = _totp_context()
+            ctx['totp_error'] = 'Incorrect code — please try again.'
+            return render(request, '2fa_setup.html', ctx)
+ 
+        # Send code to Email
+        if method == 'email_send':
+            email = request.user.email
+            if not email:
+                ctx = _totp_context()
+                ctx['email_error'] = 'No email address on your account. Please update your profile first.'
+                return render(request, '2fa_setup.html', ctx)
+            code = str(random.randint(100000, 999999))
+            request.session['email_otp'] = code
+            send_mail(
+                subject='Your BearEstate verification code',
+                message=f'Your one-time code is: {code}\n\nIt expires in 10 minutes.',
+                from_email='noreply@bearestate.me',
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            ctx = _totp_context()
+            ctx['email_sent'] = True
+            ctx['email_address'] = email
+            return render(request, '2fa_setup.html', ctx)
+ 
+        # Email Verify
+        if method == 'email_verify':
+            entered = request.POST.get('email_code', '').strip()
+            stored  = request.session.get('email_otp', '')
+            if entered == stored and stored:
+                p = request.user.profile
+                p.totp_enabled = True
+                p.two_fa_method = 'email'
+                p.save()
+                del request.session['email_otp']
+                return redirect('bear_estate_homepage')
+            ctx = _totp_context()
+            ctx['email_sent'] = True
+            ctx['email_address'] = request.user.email
+            ctx['email_error'] = 'Incorrect code — please try again.'
+            return render(request, '2fa_setup.html', ctx)
+ 
+    return render(request, '2fa_setup.html', _totp_context())
