@@ -396,15 +396,15 @@
                 {% if posts_with_chats %}
                     <div class="sidebar-section-title">My Listings</div>
                     {% for item in posts_with_chats %}
-                    <a class="chat-entry {% if selected_id == item.post.id %}active{% endif %}"
-                        href="{% url 'chat_room' item.post.id %}"
-                        data-name="{{ item.post.message }}">
+                    <a class="chat-entry {% if selected_id == item.post.id and selected_inquirer_id == item.inquirer_id %}active{% endif %}"
+                        href="{% url 'chat_room' item.post.id item.inquirer_id %}"
+                        data-name="{{ item.inquirer_name }}">
 
-                            <div class="chat-avatar">{{ item.post.id }}</div>
+                            <div class="chat-avatar">{{ item.inquirer_name|first|upper }}</div>
 
                             <div class="chat-entry-info">
-                                <div class="chat-entry-name">Posting #{{ item.post.id }}</div>
-                                <div class="chat-entry-preview">{{ item.post.message|truncatechars:35 }}</div>
+                                <div class="chat-entry-name">{{ item.inquirer_name }}</div>
+                                <div class="chat-entry-preview">Posting #{{ item.post.id }} · {{ item.last_message.content|truncatechars:28 }}</div>
                             </div>
 
                             <div class="chat-entry-meta">
@@ -419,7 +419,7 @@
                     <div class="sidebar-section-title">Interested In</div>
                     {% for item in participated_chats %}
                     <a class="chat-entry {% if selected_id == item.posting_id %}active{% endif %}"
-                        href="{% url 'chat_room' item.posting_id %}"
+                        href="{% url 'chat_room' item.posting_id item.inquirer_id %}"
                         data-name="Posting #{{ item.posting_id }}">
 
                             <div class="chat-avatar">#</div>
@@ -451,7 +451,7 @@
                         <div class="panel-header-name">{{ selected_title }}</div>
                         <div class="panel-header-sub">Posting #{{ selected_id }}</div>
                     </div>
-                    <a href="/chat/{{ selected_id }}/" target="_blank" class="panel-header-action">
+                    <a href="{% url 'chat_room' selected_id selected_inquirer_id %}" target="_blank" class="panel-header-action">
                         Open Chat →
                     </a>
                 </div>

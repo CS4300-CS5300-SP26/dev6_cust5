@@ -13,7 +13,8 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "test-secret-key")
 #SECRET_KEY='%@fg1g!5bi2+$g9jasg462z92o6*sm(32@f@w703bd&v8r8o4%'
 #DJANGO_SECRET_KEY='%@fg1g!5bi2+$g9jasg462z92o6*sm(32@f@w703bd&v8r8o4%'
 #DEBUG = "TRUE"
-DEBUG = os.environ.get("DEBUG", "False") == "True"
+#DEBUG = os.environ.get("DEBUG", "False") == "True"
+DEBUG=False
 
 ALLOWED_HOSTS = ["bearestate.me", "www.bearestate.me", "premain.bearestate.me", "127.0.0.1", "localhost", ]
 
