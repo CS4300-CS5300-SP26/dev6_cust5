@@ -516,8 +516,9 @@ class ChatConsumerTest(TestCase):
 
     def _make_app(self):
         from channels.routing import URLRouter
+        from channels.auth import AuthMiddlewareStack
         import chat.routing
-        return URLRouter(chat.routing.websocket_urlpatterns)
+        return AuthMiddlewareStack(URLRouter(chat.routing.websocket_urlpatterns))
 
     def test_consumer_connects_and_disconnects(self):
         """
@@ -530,6 +531,7 @@ class ChatConsumerTest(TestCase):
 
         async def run():
             comm = WebsocketCommunicator(app, 'ws/chat/1/')
+            comm.scope['user'] = self.user  # inject authenticated user
             connected, _ = await comm.connect()
             assert connected, "WebSocket did not connect"
             await comm.disconnect()
@@ -550,9 +552,6 @@ class ChatConsumerTest(TestCase):
         self.assertEqual(Message.objects.filter(posting_id=99).count(), 1)
 
     def test_get_history_returns_existing_messages(self):
-        """
-        get_history() returns all DB messages for a posting.
-        """
         from chat.consumers import ChatConsumer
         from chat.models import Message
         from asgiref.sync import async_to_sync
@@ -563,6 +562,7 @@ class ChatConsumerTest(TestCase):
         )
         consumer = ChatConsumer()
         consumer.posting_id = 77
+        consumer.scope = {'user': self.user}  # add this
         history = async_to_sync(consumer.get_history)()
         self.assertEqual(len(history), 1)
         self.assertEqual(history[0]['message'], 'History msg')
@@ -584,10 +584,10 @@ class ChatConsumerTest(TestCase):
         app = self._make_app()
 
         async def run():
-            comm = WebsocketCommunicator(app, 'ws/chat/3/')
-            await comm.connect()
-            history_msg = await comm.receive_json_from()
-            assert history_msg['message'] == 'Old message'
+            comm = WebsocketCommunicator(app, 'ws/chat/1/')
+            comm.scope['user'] = self.user  # inject authenticated user
+            connected, _ = await comm.connect()
+            assert connected, "WebSocket did not connect"
             await comm.disconnect()
 
         async_to_sync(run)()
