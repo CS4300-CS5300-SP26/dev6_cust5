@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div id="chatBox">
+    <div id="messageLog"></div>
+    <input type="text" id="chatInput" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+    const postingId = {{ posting_id }};
+    const socket = new WebSocket(`ws://${window.location.host}/ws/chat/${postingId}/`);
+
+    socket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        const log = document.getElementById('messageLog');
+
+        if (data.user_message) {
+            log.innerHTML += `<p><strong>You:</strong> ${data.user_message}</p>`;
+        }
+        if (data.bot_reply) {
+            log.innerHTML += `<p><strong>Owner:</strong> ${data.bot_reply}</p>`;
+        }
+
+        log.scrollTop = log.scrollHeight;
+    };
+
+    socket.onclose = function() {
+        console.log('Chat connection closed.');
+    };
+
+    function sendMessage() {
+        const input = document.getElementById('chatInput');
+        socket.send(JSON.stringify({ message: input.value }));
+        input.value = '';
+    }
+
+    // Allow Enter key to send
+    document.getElementById('chatInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') sendMessage();
+    });
+</script>
+
+{% endblock %}
