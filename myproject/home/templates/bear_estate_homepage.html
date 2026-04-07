@@ -223,7 +223,7 @@
                         <!--<p><strong>Year Built:</strong> {{ property.yearBuilt }}</p>-->
 
                         #Open a new chat
-                        <button class="btn-login" onclick="window.open('/chat/{{ property.id }}/', 'chat', 'width=420,height=600')">
+                        <button class="btn-login" onclick="window.open('/chat/{{ property.id }}/{{ request.user.id }}/', 'chat', 'width=420,height=600')">
                             Chat →
                         </button>
                     </div>
