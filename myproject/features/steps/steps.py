@@ -254,6 +254,7 @@ def step_message_sent(context, content):
     sender = getattr(context, 'user', None)
     Message.objects.create(
         posting_id=context.post.id,
+        inquirer_id=sender.id if sender else None,
         sender=sender,
         sender_label=sender.username if sender else 'anonymous',
         content=content,
@@ -267,7 +268,9 @@ def step_visit_inbox(context):
 # When Statement
 @when('I open the chat room for the posting')
 def step_open_chat_room(context):
-    context.response = context.test.client.get(f'/chat/{context.post.id}/')
+    user = getattr(context, 'user', None)
+    user_id = user.id if user else 0
+    context.response = context.test.client.get(f'/chat/{context.post.id}/{user_id}/')
 
 # Then Statement
 @then('the inbox returns 200')
