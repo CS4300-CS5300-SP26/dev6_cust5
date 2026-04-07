@@ -1,8 +1,44 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 # Create your models here.
 
+class UserProfile(models.Model):
+    """
+    Extends Django's built-in User with optional contact info.
+    Phone and email are not required (optional for now). They can become mandatory later on.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    phone = models.CharField(max_length=20, blank=True, default='')
+    # Email is already on User, check if it's verified
+    email_verified = models.BooleanField(default=False)
+    # TOTP secret stored after the user completes 2-FA setup
+    totp_secret = models.CharField(max_length=64, blank=True, default='')
+    totp_enabled = models.BooleanField(default=False)
+ 
+    class TwoFAMethod(models.TextChoices):
+        NONE  = 'none',  'None'
+        TOTP  = 'totp',  'Authenticator App'
+        EMAIL = 'email', 'Email Code'
+ 
+    two_fa_method = models.CharField(
+        max_length=5,
+        choices=TwoFAMethod.choices,
+        default=TwoFAMethod.NONE,
+    )
+ 
+    def __str__(self):
+        return f"Profile({self.user.username})"
+ 
+ 
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    """Auto-create a UserProfile whenever a new user is saved."""
+    if created:
+        UserProfile.objects.get_or_create(user=instance)
+ 
 class RoommatePost(models.Model):
     '''
     user = An instance from the Django built-in User class

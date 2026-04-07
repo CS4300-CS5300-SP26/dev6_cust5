@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
 from unittest.mock import patch
-
+import json
 
 class RegisterTest(TestCase):
     def test_register_page_success(self):
@@ -157,3 +157,144 @@ class RoommatePostingTest(TestCase):
         self.client.post(f'/roommate-posts/{post.id}/close/')
         post.refresh_from_db()
         self.assertEqual(post.status, 'open')  
+
+
+class PropertyMapTest(TestCase):
+    # A dedicated map endpoint must exist and be reachable
+    def test_property_map_endpoint_returns_200(self):
+        response = self.client.get('/map/', {'location': 'Boulder, CO'})
+        self.assertEqual(response.status_code, 200)
+ 
+   
+    # The response must include coordinate data for each listing
+    @patch('home.views.get_properties')
+    def test_map_response_includes_coordinates_for_listings(self, mock_api):
+        mock_api.return_value = [
+            {
+                'id': 'abc123',
+                'addressLine1': '123 Main St',
+                'city': 'Boulder',
+                'state': 'CO',
+                'price': 1500,
+                'latitude': 40.0150,
+                'longitude': -105.2705,
+                'propertyType': 'Apartment',
+            }
+        ]
+ 
+        response = self.client.get('/map/', {'location': 'Boulder, CO'})
+        self.assertEqual(response.status_code, 200)
+ 
+        # The view must expose map_properties in its context so the template
+        # Each item must carry lat/lng.
+        map_properties = response.context.get('map_properties', [])
+        self.assertTrue(len(map_properties) > 0, "map_properties context key is empty")
+ 
+        first = map_properties[0]
+        self.assertIn('latitude', first,  "latitude missing from map property")
+        self.assertIn('longitude', first, "longitude missing from map property")
+
+class KeywordSearchTests(TestCase):
+    def setUp(self):
+        from home.models import Property
+        Property.objects.create(
+            title="Cozy Studio near CU Campus",
+            price=900,
+            property_type="studio",
+            listing_type="rent",
+            location="Boulder, CO",
+            amenities="gym, parking, laundry",
+        )
+        Property.objects.create(
+            title="Downtown Loft with Rooftop",
+            price=1800,
+            property_type="apartment",
+            listing_type="rent",
+            location="Denver, CO",
+            amenities="rooftop, concierge, pool",
+        )
+        Property.objects.create(
+            title="Quiet House near Flatirons",
+            price=2200,
+            property_type="house",
+            listing_type="rent",
+            location="Boulder, CO",
+            amenities="garage, backyard, pet-friendly",
+        )
+ 
+    # The search endpoint must exist and return 200 for a keyword query
+    def test_keyword_search_endpoint_returns_200(self):
+        response = self.client.get('/search/', {'q': 'studio'})
+        self.assertEqual(response.status_code, 200)
+ 
+    # A keyword matching part of a title must return that listing
+    def test_search_by_title_keyword_returns_matching_property(self):
+        response = self.client.get('/search/', {'q': 'Loft'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Downtown Loft with Rooftop")
+        self.assertNotContains(response, "Cozy Studio near CU Campus")
+        self.assertNotContains(response, "Quiet House near Flatirons")
+ 
+    # A keyword matching a location must surface listings in that location
+    def test_search_by_location_keyword_returns_matching_properties(self):
+        response = self.client.get('/search/', {'q': 'Boulder'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Cozy Studio near CU Campus")
+        self.assertContains(response, "Quiet House near Flatirons")
+        self.assertNotContains(response, "Downtown Loft with Rooftop")
+ 
+ 
+class DirectMessagingTests(TestCase):
+    def setUp(self):
+        self.alice = User.objects.create_user(username='alice', password='Pass123!')
+        self.bob   = User.objects.create_user(username='bob',   password='Pass123!')
+        self.carol = User.objects.create_user(username='carol', password='Pass123!')
+        self.client.login(username='alice', password='Pass123!')
+ 
+ 
+    # The inbox endpoint must exist and be accessible to authenticated users
+    def test_inbox_endpoint_returns_200_for_authenticated_user(self):
+        response = self.client.get('/messages/')
+        self.assertEqual(response.status_code, 200)
+ 
+    # Unauthenticated users must be redirected away from the inbox
+    def test_unauthenticated_user_cannot_access_inbox(self):
+        self.client.logout()
+        response = self.client.get('/messages/')
+        self.assertNotEqual(response.status_code, 200)
+ 
+ 
+    # Sending a message must persist it to the database
+    def test_send_message_saves_to_database(self):
+        from home.models import DirectMessage
+        self.client.post('/messages/send/', {
+            'recipient': self.bob.id,
+            'body': 'Hi Bob, is the room still available?',
+        })
+        self.assertEqual(DirectMessage.objects.count(), 1)
+ 
+ 
+class TwoFactorAuthTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='secureuser', password='StrongPass@99'
+        )
+        self.client.login(username='secureuser', password='StrongPass@99')
+ 
+    # The 2FA setup page must exist and be accessible to authenticated users
+    def test_2fa_setup_page_returns_200(self):
+        response = self.client.get('/auth/2fa/setup/')
+        self.assertEqual(response.status_code, 200)
+ 
+    # Unauthenticated users must not be able to reach the 2FA setup page
+    def test_unauthenticated_user_cannot_access_2fa_setup(self):
+        self.client.logout()
+        response = self.client.get('/auth/2fa/setup/')
+        self.assertNotEqual(response.status_code, 200)
+ 
+    # The setup page must provide a TOTP secret (QR or base32 key) in context
+    def test_2fa_setup_provides_totp_secret_in_context(self):
+        response = self.client.get('/auth/2fa/setup/')
+        self.assertIn('totp_secret', response.context)
+        secret = response.context['totp_secret']
+        self.assertTrue(len(secret) > 0)
