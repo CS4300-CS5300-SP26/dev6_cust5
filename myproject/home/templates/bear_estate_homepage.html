@@ -38,6 +38,8 @@
             <div class="nav-buttons">
                 {% if request.user.is_authenticated %}
                   <span class="btn-login">Hi, {{ request.user.username }}</span>
+                  
+                    <a href="/chat/inbox/" class="btn-login">My Chats</a>
                     <form method="post" action="/logout/" style="display:inline;">
                         {% csrf_token %}
                         <button type="submit" class="btn-login" style="background:none; border:none; cursor:pointer;">Log Out</button>
@@ -159,6 +161,7 @@
             <a href="/roommate-posts/create/" style="display:inline-block; margin-top:0.75rem; color:var(--teal-dark); border:1.5px solid var(--teal-dark); padding:0.4rem 1rem; border-radius:20px; font-size:0.85rem; text-decoration:none;">Post a Listing →</a>
             <a href="/roommate-posts/" style="display:inline-block; margin-top:0.75rem; color:var(--teal-dark); border:1.5px solid var(--teal-dark); padding:0.4rem 1rem; border-radius:20px; font-size:0.85rem; text-decoration:none;">Browse Roommates →</a>
             <a href="/roommate-posts/search/" style="display:inline-block; margin-top:0.75rem; color:var(--teal-dark); border:1.5px solid var(--teal-dark); padding:0.4rem 1rem; border-radius:20px; font-size:0.85rem; text-decoration:none;">Browse Stock Roommates →</a>
+            <a href="/roommate-posts/" style="display:inline-block; margin-top:0.75rem; color:var(--teal-dark); border:1.5px solid var(--teal-dark); padding:0.4rem 1rem; border-radius:20px; font-size:0.85rem; text-decoration:none;">Browse & Chat →</a>
         </div>
 
         <div class="feature">
@@ -210,6 +213,11 @@
                         <p><strong>Bathrooms:</strong> {{ property.bathrooms }}</p>
                         <p><strong>Size:</strong> {{ property.squareFootage }} sqft</p>
                         <!--<p><strong>Year Built:</strong> {{ property.yearBuilt }}</p>-->
+
+                        #Open a new chat
+                        <button class="btn-login" onclick="window.open('/chat/{{ property.id }}/', 'chat', 'width=420,height=600')">
+                            Chat →
+                        </button>
                     </div>
                 {% endfor %}
             </div>
