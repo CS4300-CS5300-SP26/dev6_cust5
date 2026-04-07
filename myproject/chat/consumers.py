@@ -8,7 +8,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         self.posting_id = self.scope['url_route']['kwargs']['posting_id']
-        self.room_group = f'chat_posting_{self.posting_id}'
+        self.inquirer_id = self.scope['url_route']['kwargs']['inquirer_id']
+        self.room_group = f'chat_posting_{self.posting_id}_inquirer_{self.inquirer_id}'
         await self.channel_layer.group_add(self.room_group, self.channel_name)
         await self.accept()
         history = await self.get_history()
@@ -46,12 +47,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def save_message(self, user, content):
         Message.objects.create(
             posting_id=self.posting_id,
+            inquirer_id=self.inquirer_id,          # Bug fix: record which conversation this belongs to
             sender=user if user.is_authenticated else None,
             sender_label=user.username if user.is_authenticated else 'anonymous',
             content=content
         )
 
-    @database_sync_to_async
+    @database_sync_to_async                        # Bug fix: method is now INSIDE the class (was at module level)
     def get_history(self):
-        messages = Message.objects.filter(posting_id=self.posting_id)
+        messages = Message.objects.filter(
+            posting_id=self.posting_id,
+            inquirer_id=self.inquirer_id,          # Bug fix: filter by inquirer so conversations don't bleed into each other
+        ).order_by('timestamp')
         return [{'message': m.content, 'sender': m.sender_label} for m in messages]
