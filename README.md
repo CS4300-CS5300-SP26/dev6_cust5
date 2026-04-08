@@ -33,7 +33,6 @@ To expand the number of available listings, we integrated the RentCast API.
 
 When a user searches by location:
 - The system sends a request to the API  
-- Additional listings are returned and displayed under **"Additional Listings"**
 
 Each API listing includes:
 - Property address  
