@@ -63,6 +63,7 @@ The roommate posting page was redesigned and expanded.
 - Clicking a post expands it to show full details  
 - Clicking again closes the expanded view 
 
+---
 
 ### 4. Instant Messaging
 Instant Messaging (IM) was implemented using **Django Channels** to support real-time communication without relying on repeated API polling.
@@ -81,6 +82,8 @@ Instant Messaging (IM) was implemented using **Django Channels** to support real
 - Each chat belongs to a user and updates automatically when the other user sends a new message
 - **Daphne** is used as the **ASGI** server to support asynchronous updates
 
+
+---
 
 ### 5. Interactive Map
 The interactive map was updated using **Leaflet** and **OpenStreetMap** to help users view listings visually.
@@ -101,6 +104,8 @@ The interactive map was updated using **Leaflet** and **OpenStreetMap** to help 
 **Note:**
 - Geocoding is currently only applicable to US addresses
 
+---
+
 ### 6. Keyword-Based Search
 A keyword-based search feature was implemented to allow users to filter property listings using relevant terms such as location, price, or description.
 
@@ -110,6 +115,7 @@ A keyword-based search feature was implemented to allow users to filter property
 
 This improves usability by helping users quickly find listings that better match their needs.
 
+---
 
 ### 7. Secure Authentication
 A secure authentication system was implemented using both **Time-based One-Time Passwords (TOTP)** and **email-based verification**.
