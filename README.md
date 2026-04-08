@@ -134,7 +134,7 @@ This improves account security and helps prevent unauthorized access.
 
 ---
 
-### 4. Testing Approach (TDD)
+### 8. Testing Approach (TDD)
 
 We followed a test-driven development (TDD) approach using the **red–green–refactor cycle**.
 
@@ -147,7 +147,7 @@ We followed a test-driven development (TDD) approach using the **red–green–r
 - Property search tests (location filtering, price filtering, API mocking)  
 - Roommate posting tests (create, view, close, delete, permission checks)  
 
-Overall, the project achieved approximately **91% code coverage**.
+Overall, the project achieved approximately **85% code coverage**.
 
 ---
 
