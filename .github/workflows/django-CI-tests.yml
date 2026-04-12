@@ -32,7 +32,7 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f myproject/requirements.txt ]; then pip install -r myproject/requirements.txt; fi
-          pip install coverage
+          pip install coverage flake8
 
       #move into the Django project folder and recreate a production-style environment
       - name: Recreate production-style environment
