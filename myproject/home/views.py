@@ -81,6 +81,90 @@ def get_neighborhood_profile(city, state, address):
     return neighborhood, profile
 
 
+# ---------------------- AGENT ADVERTISING HELPERS ---------------------- #
+
+def score_listing_for_agent(property_data, user_preferences):
+    """
+    Scores a property based on the user's filters/search choices.
+    Higher score = better curated agent recommendation.
+    """
+    score = 0
+
+    rent = property_data.get("rent") or 0
+    total_cost = property_data.get("total_monthly_cost") or 0
+    listing_property_type = (property_data.get("property_type") or "").strip()
+    amenities = property_data.get("nearby_amenities", [])
+
+    budget = user_preferences.get("budget")
+    desired_type = user_preferences.get("property_type")
+    desired_amenity = user_preferences.get("amenity")
+    listing_type = user_preferences.get("listing_type")
+
+    # Property type match
+    if desired_type and listing_property_type == desired_type:
+        score += 3
+
+    # Amenity match
+    if desired_amenity and desired_amenity.lower() != "any":
+        if any(desired_amenity.lower() in amenity.lower() for amenity in amenities):
+            score += 3
+
+    # Budget match
+    if budget and budget != "any":
+        try:
+            min_price, max_price = map(int, budget.split("-"))
+            if min_price <= rent <= max_price:
+                score += 4
+        except ValueError:
+            pass
+
+    # Favor lower total cost
+    if total_cost and total_cost < 2000:
+        score += 2
+
+    # Light preference for ownership-friendly property types when user is browsing for sale
+    if listing_type == "for_sale" and listing_property_type in ["Condo", "Townhouse", "House"]:
+        score += 2
+
+    return score
+
+
+def generate_agent_message(user_preferences, recommended_properties):
+    """
+    Creates a short message explaining why the agent picks were selected.
+    """
+    city = user_preferences.get("city") or "this area"
+    listing_type = user_preferences.get("listing_type") or ""
+    amenity = user_preferences.get("amenity") or "your preferred amenities"
+
+    if not recommended_properties:
+        return "No curated recommendations are available yet for your current filters."
+
+    if listing_type == "for_rent":
+        return f"Based on your rental search in {city}, these agent picks best match your budget, property preferences, and nearby amenities like {amenity}."
+    elif listing_type == "for_sale":
+        return f"Based on your home-buying search in {city}, these curated listings are strong matches for your selected filters and neighborhood preferences."
+    else:
+        return f"Based on your search in {city}, these curated listings best match your filters, searched amenities, and likely housing needs."
+
+
+def get_buyer_readiness_message(user_preferences):
+    """
+    Optional message for renters who may also be good candidates to buy.
+    """
+    listing_type = user_preferences.get("listing_type")
+    budget = user_preferences.get("budget")
+
+    if listing_type == "for_rent" and budget in ["1400-2000", "2000-999999"]:
+        return (
+            "Agent Insight: Based on your budget, you may also be a strong candidate "
+            "for entry-level homeownership options in this area. A real estate agent "
+            "could help you compare renting versus buying."
+        )
+
+    return ""
+
+
 # ------------------------------- HTML views -------------------------------- #
 
 # Home page
@@ -145,13 +229,15 @@ def roommate_delete(request, post_id):
 # Map View
 def map_view(request):
     """
-    Parameters: request
     Handles user input from map page or landing page. Gets coordinates for addresses
     from RentCast API or geocoding if necessary. Passes coordinates to template for map display.
-    Returns: Displays map view
+    Also builds curated agent recommendations from user filters and matched listings.
     """
 
     map_properties = []
+    recommended_properties = []
+    agent_message = ""
+    buyer_readiness_message = ""
 
     # Default values so nothing breaks
     city = ''
@@ -257,6 +343,30 @@ def map_view(request):
         elif sort_by == 'total_cost_desc':
             map_properties.sort(key=lambda p: p.get('total_monthly_cost') or 0, reverse=True)
 
+        # ---------------- AGENT ADVERTISING / CURATED PICKS ---------------- #
+
+        user_preferences = {
+            "city": city,
+            "state": state,
+            "listing_type": listing_type,
+            "property_type": property_type,
+            "budget": price_range,
+            "amenity": amenity_filter,
+            "sort_by": sort_by,
+        }
+
+        for prop in map_properties:
+            prop["agent_score"] = score_listing_for_agent(prop, user_preferences)
+
+        recommended_properties = sorted(
+            map_properties,
+            key=lambda p: p.get("agent_score", 0),
+            reverse=True
+        )[:3]
+
+        agent_message = generate_agent_message(user_preferences, recommended_properties)
+        buyer_readiness_message = get_buyer_readiness_message(user_preferences)
+
     else:
         # Defaults context to empty / existing DB properties
         all_properties = Property.objects.exclude(latitude=None, longitude=None)
@@ -272,6 +382,9 @@ def map_view(request):
         'price_range': price_range,
         'sort_by': sort_by,
         'amenity_filter': amenity_filter,
+        'recommended_properties': recommended_properties,
+        'agent_message': agent_message,
+        'buyer_readiness_message': buyer_readiness_message,
     }
     return render(request, 'map.html', context)
 
