@@ -100,31 +100,37 @@ def score_listing_for_agent(property_data, user_preferences):
     desired_amenity = user_preferences.get("amenity")
     listing_type = user_preferences.get("listing_type")
 
-    # Property type match
+    # Stronger property type match
     if desired_type and listing_property_type == desired_type:
-        score += 3
+        score += 5
 
-    # Amenity match
+    # Stronger amenity match
     if desired_amenity and desired_amenity.lower() != "any":
         if any(desired_amenity.lower() in amenity.lower() for amenity in amenities):
-            score += 3
+            score += 8
 
-    # Budget match
+    # Budget match + reward cheaper listings inside the selected range
     if budget and budget != "any":
         try:
             min_price, max_price = map(int, budget.split("-"))
             if min_price <= rent <= max_price:
-                score += 4
+                score += 6
+                score += max(0, (max_price - rent) // 100)
         except ValueError:
             pass
 
-    # Favor lower total cost
-    if total_cost and total_cost < 2000:
-        score += 2
+    # Favor lower total monthly cost
+    if total_cost:
+        if total_cost < 1200:
+            score += 6
+        elif total_cost < 1600:
+            score += 4
+        elif total_cost < 2000:
+            score += 2
 
-    # Light preference for ownership-friendly property types when user is browsing for sale
+    # Ownership-friendly preference for buy searches
     if listing_type == "for_sale" and listing_property_type in ["Condo", "Townhouse", "House"]:
-        score += 2
+        score += 3
 
     return score
 
