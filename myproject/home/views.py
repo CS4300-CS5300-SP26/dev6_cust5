@@ -33,24 +33,24 @@ NEIGHBORHOOD_COSTS = {
         "Default": {
             "monthly_utilities": 160,
             "monthly_services": 60,
-            "nearby_amenities": ["Grocery Store"],
+            "nearby_amenities": ["Grocery Store", "Gym", "Restaurants", "Transit", "Coffee Shop"],
         },
     },
     ("Denver", "CO"): {
         "Downtown": {
             "monthly_utilities": 220,
             "monthly_services": 120,
-            "nearby_amenities": ["Transit", "Gym", "Grocery", "Restaurants"],
+            "nearby_amenities": ["Transit", "Gym", "Grocery", "Restaurants", "Coffee Shop"],
         },
         "Capitol Hill": {
             "monthly_utilities": 175,
             "monthly_services": 80,
-            "nearby_amenities": ["Transit", "Coffee Shops", "Grocery"],
+            "nearby_amenities": ["Transit", "Coffee Shops", "Grocery", "Restaurants", "Gym"],
         },
         "Default": {
             "monthly_utilities": 165,
             "monthly_services": 75,
-            "nearby_amenities": ["Grocery Store"],
+            "nearby_amenities": ["Grocery Store", "Gym", "Restaurants", "Transit", "Coffee Shop"],
         },
     },
 }
@@ -65,19 +65,18 @@ def get_neighborhood_profile(city, state, address):
     elif "hill" in address_lower:
         neighborhood = "University Hill" if city == "Boulder" else "Capitol Hill"
     else:
-        neighborhood = "Default"
+        neighborhood = f"{city} Area"
 
-    profile = city_data.get(
-        neighborhood,
-        city_data.get(
+    profile = city_data.get(neighborhood)
+    if not profile:
+        profile = city_data.get(
             "Default",
             {
                 "monthly_utilities": 150,
                 "monthly_services": 50,
                 "nearby_amenities": [],
             },
-        ),
-    )
+        )
 
     return neighborhood, profile
 
