@@ -19,6 +19,24 @@ import qrcode, io, base64
 # ---------------------- NEIGHBORHOOD MOCK DATA ---------------------- #
 
 NEIGHBORHOOD_COSTS = {
+    
+    ("Austin", "TX"): {
+    "Downtown": {
+        "monthly_utilities": 190,
+        "monthly_services": 85,
+        "nearby_amenities": ["Gym", "Restaurants", "Transit", "Coffee Shop", "Grocery Store"],
+    },
+    "University Area": {
+        "monthly_utilities": 170,
+        "monthly_services": 70,
+        "nearby_amenities": ["Gym", "Transit", "Coffee Shop", "Restaurants"],
+    },
+    "Default": {
+        "monthly_utilities": 160,
+        "monthly_services": 65,
+        "nearby_amenities": ["Grocery Store", "Gym", "Restaurants", "Transit", "Coffee Shop"],
+    },
+},
     ("Boulder", "CO"): {
         "Downtown": {
             "monthly_utilities": 210,
