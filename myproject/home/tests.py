@@ -296,5 +296,52 @@ class TwoFactorAuthTests(TestCase):
     def test_2fa_setup_provides_totp_secret_in_context(self):
         response = self.client.get('/auth/2fa/setup/')
         self.assertIn('totp_secret', response.context)
+<<<<<<< Updated upstream
         secret = response.context['totp_secret']
         self.assertTrue(len(secret) > 0)
+=======
+        self.assertTrue(len(response.context['totp_secret']) > 0)
+
+# For AI Listing Comparison
+class AIListingComparisonTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="testuser",
+            password="StrongPassword@123"
+        )
+        self.client.login(username="testuser", password="StrongPassword@123")
+
+    @patch("home.views.get_properties", return_value=MOCK_API_PROPERTIES)
+    def test_ai_comparison_page_loads(self, mock_api):
+        """AI comparison page returns 200 for authenticated user."""
+        response = self.client.get("/ai-listing-comparison/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_ai_comparison_requires_login(self):
+        """Unauthenticated users cannot access AI comparison."""
+        self.client.logout()
+        response = self.client.get("/ai-listing-comparison/")
+        self.assertNotEqual(response.status_code, 200)
+
+    @patch("home.views.get_properties", return_value=MOCK_API_PROPERTIES)
+    @patch("home.views.generate_ai_comparison", return_value="Mock AI comparison output")
+    def test_ai_comparison_returns_result(self, mock_ai, mock_api):
+        """AI agent returns a formatted comparison string."""
+        response = self.client.get("/ai-listing-comparison/", {
+            "city": "Boulder",
+            "budget": "800-2000",
+            "type": "apartment"
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Mock AI comparison output", response.content.decode())
+
+    @patch("home.views.get_properties", return_value=[])
+    @patch("home.views.generate_ai_comparison", return_value="No listings found")
+    def test_ai_handles_no_results(self, mock_ai, mock_api):
+        """AI comparison does not crash when no listings are available."""
+        response = self.client.get("/ai-listing-comparison/", {
+            "city": "Nowhere"
+        })        
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("No listings found", response.content.decode())
+>>>>>>> Stashed changes
