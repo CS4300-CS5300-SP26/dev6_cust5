@@ -157,3 +157,6 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+#When tests are run, adjust ASGI Server
+TESTING = False
