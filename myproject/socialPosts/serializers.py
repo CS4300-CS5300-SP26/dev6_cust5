@@ -1,6 +1,12 @@
-# socialPosts/serializers.py
+from datetime import datetime, date
 
 def serialize_listing(post):
+    raw_date = post.date
+    if isinstance(raw_date, str):
+        try:
+            raw_date = datetime.strptime(raw_date, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            raw_date = None
     return {
         "id":          post.pk,
         "slug":        str(post.pk),
@@ -9,8 +15,8 @@ def serialize_listing(post):
         "rent":        float(post.rent) if post.rent else None,
         "move_in":     "",
         "type":        post.property_type,
-        "description": (post.message[:110] + "…") if len(post.message) > 110 else post.message,
+        "description": (post.message[:110] + "...") if len(post.message) > 110 else post.message,
         "avatar":      None,
         "status":      post.status,
-        "created_at":  post.date.strftime("%-d %b %Y"),
+        "created_at":  raw_date.strftime("%-d %b %Y") if raw_date else "",
     }
