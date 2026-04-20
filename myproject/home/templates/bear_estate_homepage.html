@@ -508,9 +508,29 @@
                         {{ property.bedrooms }}bd · {{ property.bathrooms }}ba
                         {% if property.sq_ft %} · {{ property.sq_ft }} sqft{% endif %}
                     </div>
-                    <div class="property-price">
-                        ${{ property.price|floatformat:0 }}
-                        {% if property.listing_type == "rent" %}<span>/mo</span>{% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if api_properties %}
+            <h2>Additional Listings</h2>
+
+            <div class="property-grid">
+                {% for property in api_properties %}
+                    <div class="property-card">
+                        <h3>{{ property.formattedAddress }}</h3>
+                        <p><strong>City:</strong> {{ property.city }}</p>
+                        <p><strong>Type:</strong> {{ property.propertyType }}</p>
+                        <p><strong>Rent:</strong> ${{ property.price }}/mo</p> 
+                        <p><strong>Bedrooms:</strong> {{ property.bedrooms }}</p>
+                        <p><strong>Bathrooms:</strong> {{ property.bathrooms }}</p>
+                        <p><strong>Size:</strong> {{ property.squareFootage }} sqft</p>
+                        <!--<p><strong>Year Built:</strong> {{ property.yearBuilt }}</p>-->
+
+                        #Open a new chat
+                        <button class="btn-login" onclick="window.open('/chat/{{ property.id }}/{{ request.user.id }}/', 'chat', 'width=420,height=600')">
+                            Chat →
+                        </button>
                     </div>
                 </div>
             </div>

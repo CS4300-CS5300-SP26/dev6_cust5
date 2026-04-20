@@ -257,7 +257,7 @@ class InstantMessagingFlowTest(TestCase):
     def test_inquirer_can_open_chat_room(self):
         post = self._create_post(self.bob)
         self.client.login(username='alice', password='Pass123!')
-        response = self.client.get(f'/chat/{post.id}/')
+        response = self.client.get(f'/chat/{post.id}/{self.alice.id}/')
         self.assertEqual(response.status_code, 200)
 
     def test_message_persisted_shows_in_inbox_count(self):
@@ -265,6 +265,7 @@ class InstantMessagingFlowTest(TestCase):
         post = self._create_post(self.bob)
         Message.objects.create(
             posting_id=post.id,
+            inquirer_id=self.alice.id,
             sender=self.alice,
             sender_label='user',
             content='Is the room still available?',
@@ -278,7 +279,7 @@ class InstantMessagingFlowTest(TestCase):
         from chat.models import Message
         post = self._create_post(self.bob)
         Message.objects.create(
-            posting_id=post.id, sender=self.alice,
+            posting_id=post.id, inquirer_id=self.alice.id, sender=self.alice,
             sender_label='user', content='Hello!'
         )
         self.client.login(username='alice', password='Pass123!')
@@ -289,7 +290,7 @@ class InstantMessagingFlowTest(TestCase):
 
     def test_unauthenticated_user_cannot_view_chat_room(self):
         post = self._create_post(self.bob)
-        response = self.client.get(f'/chat/{post.id}/')
+        response = self.client.get(f'/chat/{post.id}/{self.alice.id}/')
         self.assertNotEqual(response.status_code, 200)
 
     def test_multiple_messages_in_same_room_all_counted(self):
@@ -297,7 +298,7 @@ class InstantMessagingFlowTest(TestCase):
         post = self._create_post(self.bob)
         for i in range(3):
             Message.objects.create(
-                posting_id=post.id, sender=self.alice,
+                posting_id=post.id, inquirer_id=self.alice.id, sender=self.alice,
                 sender_label='user', content=f'Message {i}'
             )
         self.client.login(username='bob', password='Pass123!')
