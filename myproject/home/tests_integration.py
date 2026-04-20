@@ -378,3 +378,45 @@ class TwoFAFlowTest(TestCase):
         self.assertEqual(response.status_code, 302)
         profile = UserProfile.objects.get(user=self.user)
         self.assertEqual(profile.two_fa_method, 'email')
+
+# ----------------------------- SPRINT 3 ---------------------------------#
+class MapPriceFilter(TestCase):
+    '''
+    Tests the integration of the price filter on the map
+    '''
+    
+    @patch('home.views.get_neighborhood_profile')
+    @patch('home.views.fetch_filtered_properties')
+    def test_price_filter_returns_correct_properties(self, mock_api, mock_neighborhood):
+        '''
+        Parameters: self, intercepts RentCast API (to avoid unnecessary calls)
+        Creates mock data, which includes map_property and neighborhood profile (utilities, services, amenities)
+        Sets the price filter to "Total Cost: Low to High" and runs the view logic
+        Asserts whether the returned data is filtered correctly
+        '''
+        # Mock data for the API response
+        mock_api.return_value = [
+            {'id': '1', 'price': 1500, 'latitude': 40.01, 'longitude': -105.27, 'formattedAddress': '123 Main St'},
+            {'id': '2', 'price': 3000, 'latitude': 40.02, 'longitude': -105.28, 'formattedAddress': '456 Elm St'},
+            {'id': '3', 'price': 800,  'latitude': 40.03, 'longitude': -105.29, 'formattedAddress': '789 Oak St'},
+        ]
+        
+        # Mock data for neighborhood profile (utilities, services, amenities) which is was added to the views.py
+        mock_neighborhood.return_value = ('Downtown', 
+        {
+            'monthly_utilities': 210,
+            'monthly_services': 95,
+            'nearby_amenities': ['Gym'],
+        })
+
+        # Simulates what input the user may make
+        response = self.client.get('/map/', {'city': 'Boulder', 'state': 'CO', 'sort': 'total_cost_asc'})
+        self.assertEqual(response.status_code, 200)     # Ensures the view returns a successful response
+
+        # Extracts the properties from the response context
+        properties = json.loads(response.context.get('properties', '[]'))
+        total = [p['total_monthly_cost'] for p in properties]
+        
+        # Asserts that the returned data is in the correct order
+        self.assertEqual(total, [ 1105, 1805, 3305,])
+    # END OF PRICE FILTER TEST (TOTAL COST LOW TO HIGH)

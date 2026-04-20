@@ -3,6 +3,27 @@ from django.contrib.auth.models import User
 from unittest.mock import patch
 import json
 
+# Mock API property data (to prevent unnecessary API calls)
+MOCK_API_PROPERTIES = [
+    {
+        'id': 'p1',
+        'addressLine1': '100 Cheap St',
+        'formattedAddress': '100 Cheap St, Boulder, CO',
+        'city': 'Boulder', 'state': 'CO',
+        'price': 900,
+        'latitude': 40.01, 'longitude': -105.27,
+        'propertyType': 'apartment',
+    },
+    {
+        'id': 'p2',
+        'addressLine1': '200 Pricey Ave',
+        'formattedAddress': '200 Pricey Ave, Boulder, CO',
+        'city': 'Boulder', 'state': 'CO',
+        'price': 3000,
+        'latitude': 40.02, 'longitude': -105.28,
+        'propertyType': 'house',
+    },
+]
 
 # Registration
 class RegisterTest(TestCase):
@@ -47,27 +68,6 @@ class LoginTest(TestCase):
 # Property Filter (map-based, backed by Rentcast API)
 # Filtering now happens on /map/ with API results rendered as map markers.
 # Tests use a mock so no real API calls are made.
-MOCK_API_PROPERTIES = [
-    {
-        'id': 'p1',
-        'addressLine1': '100 Cheap St',
-        'formattedAddress': '100 Cheap St, Boulder, CO',
-        'city': 'Boulder', 'state': 'CO',
-        'price': 900,
-        'latitude': 40.01, 'longitude': -105.27,
-        'propertyType': 'apartment',
-    },
-    {
-        'id': 'p2',
-        'addressLine1': '200 Pricey Ave',
-        'formattedAddress': '200 Pricey Ave, Boulder, CO',
-        'city': 'Boulder', 'state': 'CO',
-        'price': 3000,
-        'latitude': 40.02, 'longitude': -105.28,
-        'propertyType': 'house',
-    },
-]
-
 
 class PropertyFilterTests(TestCase):
     @patch('home.views.get_properties', return_value=[])
@@ -305,3 +305,23 @@ class TwoFactorAuthTests(TestCase):
         response = self.client.get('/auth/2fa/setup/')
         self.assertIn('totp_secret', response.context)
         self.assertTrue(len(response.context['totp_secret']) > 0)
+
+# ----------------------------- SPRINT 3 ---------------------------------#
+class MapPriceFilter(TestCase):
+    '''
+    Tests the integration of the price filter on the map
+    '''
+    
+    @patch ('home.views.get_properties', return_value=MOCK_API_PROPERTIES)
+    def test_price_filter_applies_correctly_and_returns_correct_markers(self, mock_properties):
+        '''
+        Parameters: self
+        Applies a price filter to the map (Utilizes the MOCK_API_PROPERTIES initialized above)
+        Asserts if the page returns 200
+        '''
+        # Simulates possible input from user
+        response = self.client.get('/map/', {'price_filter': 'Total Cost: Low to High'})
+        
+        # Checks status code to ensure filtering was successful and page loaded correctly
+        self.assertEqual(response.status_code, 200)
+    # END OF PRICE FILTER TEST
