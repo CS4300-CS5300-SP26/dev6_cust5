@@ -2,6 +2,9 @@
 
 This iteration of our project focuses on improving the housing search experience for students by adding price filtering, integrating external listings, and enhancing the roommate posting interface.
 
+
+This iteration we implemented the following features keyword search, instant messaging, property map feature and secure user authentication.
+
 Live Website: https://bearestate.me/
 ---
 
@@ -30,7 +33,6 @@ To expand the number of available listings, we integrated the RentCast API.
 
 When a user searches by location:
 - The system sends a request to the API  
-- Additional listings are returned and displayed under **"Additional Listings"**
 
 Each API listing includes:
 - Property address  
@@ -58,11 +60,80 @@ The roommate posting page was redesigned and expanded.
 **How it works:**
 - Users can scroll through roommate posts horizontally  
 - Clicking a post expands it to show full details  
-- Clicking again closes the expanded view  
+- Clicking again closes the expanded view 
 
 ---
 
-### 4. Testing Approach (TDD)
+### 4. Instant Messaging
+Instant Messaging (IM) was implemented using **Django Channels** to support real-time communication without relying on repeated API polling.
+
+**What was added:**
+- Real-time messaging between validated users
+- Persistent conversations stored in the database
+- A **Chat** page that loads all conversations for a user
+- Automatic chat updates when new messages are received
+
+
+**How it works:**
+- Users connect through **WebSockets**
+- Messages are cached using a **Redis** daemon running in the background
+- Messages are then saved to the Django database
+- Each chat belongs to a user and updates automatically when the other user sends a new message
+- **Daphne** is used as the **ASGI** server to support asynchronous updates
+
+
+---
+
+### 5. Interactive Map
+The interactive map was updated using **Leaflet** and **OpenStreetMap** to help users view listings visually.
+
+**What was added:**
+- Property markers placed on the map using coordinates
+- Support for geocoding when coordinates are not available
+- Homepage search integration with map redirection
+- Search inputs passed from the landing page to the map page
+
+**How it works:**
+- RentCast API listings provide latitude and longitude when available
+- If coordinates are missing, geocoding is performed using the **US Census Data API**
+- The geocoding uses the address, city, and state to find coordinates
+- Coordinates are converted into clickable markers
+- Each marker displays property information when clicked
+
+**Note:**
+- Geocoding is currently only applicable to US addresses
+
+---
+
+### 6. Keyword-Based Search
+A keyword-based search feature was implemented to allow users to filter property listings using relevant terms such as location, price, or description.
+
+**How it works:**
+- Users can search using meaningful terms related to listings
+- Matching properties are filtered based on relevant listing data
+
+This improves usability by helping users quickly find listings that better match their needs.
+
+---
+
+### 7. Secure Authentication
+A secure authentication system was implemented using both **Time-based One-Time Passwords (TOTP)** and **email-based verification**.
+
+**What was added:**
+- TOTP authentication using dynamically generated codes from authenticator applications
+- Email verification using one-time codes
+
+**How it works:**
+- A one-time code is sent to the user’s registered email
+- The code is temporarily stored in the session
+- The system validates the submitted code against the stored value
+- TOTP provides an additional secure login method through authenticator apps
+
+This improves account security and helps prevent unauthorized access.
+
+---
+
+### 8. Testing Approach (TDD)
 
 We followed a test-driven development (TDD) approach using the **red–green–refactor cycle**.
 
@@ -75,7 +146,94 @@ We followed a test-driven development (TDD) approach using the **red–green–r
 - Property search tests (location filtering, price filtering, API mocking)  
 - Roommate posting tests (create, view, close, delete, permission checks)  
 
-Overall, the project achieved approximately **91% code coverage**.
+Overall, the project achieved approximately **85% code coverage**.
+
+---
+
+### 9. Neighborhood Price Filters
+
+We added Neighborhood Price Filters to help users compare the true monthly cost of living in different areas, not just the rent price.
+
+**What was added:** 
+- Neighborhood-based cost breakdown for listings
+- Separate display of rent, utilities, and service costs
+- Total monthly cost calculation
+- Amenity-based filtering
+- Price and total-cost sorting on the map page
+
+**How it works:**
+
+- When a user searches on the map page, listings are retrieved and matched with neighborhood cost profiles
+- Each listing is enriched with:
+- Rent
+- Estimated utilities
+- Estimated service costs
+- Nearby amenities
+- Total monthly cost
+
+Users can filter listings by amenities such as:
+- Grocery
+- Gym
+- Transit
+- Restaurants
+- Coffee
+
+Users can sort listings by:
+
+- Rent: Low to High
+- Rent: High to Low
+- Total Cost: Low to High
+- Total Cost: High to Low
+
+**Map popup details include:**
+
+- Neighborhood name
+- Rent
+- Utilities
+- Services
+- Total monthly cost
+- Matching amenity
+- All nearby amenities
+
+This feature helps users better understand affordability across neighborhoods and compare listings beyond base rent alone.
+
+--- 
+
+### 10. Agent Advertising
+
+We added Agent Advertising to create a curated recommendation system that highlights listings based on the user’s search behavior and preferences.
+
+**What was added:**
+
+- Agent Picks recommendation panel on the map page
+- Listing scoring based on user filters and search choices
+- Curated top listing suggestions
+- Agent match score display
+- Buyer-readiness insight for renters with higher budgets
+
+**How it works:** 
+
+- The system collects information from the user’s selected filters, including:
+
+- City and state
+- Listing type
+- Property type
+- Budget
+- Amenity preference
+- Sort preference
+
+- Listings are scored based on how well they match those preferences
+- The highest-scoring properties are shown in an Agent Picks section
+- Each recommended card includes:
+- Address
+- Property type
+- Rent
+- Total monthly cost
+- Agent match score
+- A recommendation message explains why the listings were selected
+- For some higher-budget renters, the system also displays a message suggesting they may be ready to explore buying options with an agent
+
+This feature expands BearEstate beyond student rentals by supporting real estate agents and helping users discover listings that best fit their needs.
 
 ---
 
@@ -86,20 +244,54 @@ Overall, the project achieved approximately **91% code coverage**.
 - Applies price range filtering  
 - Calls the RentCast API  
 - Passes results to templates  
+- Supports keyword search and map-related search behavior
+- Added neighborhood cost enrichment for map listings
+- Added amenity filtering and total-cost sorting
+- Added agent recommendation scoring and curated listing logic
 
 ### rentcast_api.py
 - Sends requests to the RentCast API  
-- Returns property listing data  
+- Returns property listing data
+- Supplies coordinate data when available 
+
 
 ### bear_estate_homepage.html
 - Added budget dropdown  
 - Displays database and API listings  
+- Connects homepage search to other features such as the interactive map
 
 ### models.py
 - Updated for roommate postings  
 - Integrated with Django REST Framework  
+- Supports messaging-related data storage
+
 
 ---
+
+### Roommate posting templates
+- Added input fields for roommate posts
+- Supports expandable post view
+- Includes carousel browsing behavior
+
+
+### Messaging-related files
+- Added Django Channels support
+- Added WebSocket routing
+- Added ASGI configuration with Daphne
+- Added Redis-based message handling
+
+### map.html
+
+- Added neighborhood cost breakdown in map popups
+- Added matching amenity and full amenity display
+- Added Agent Picks sidebar with curated recommendations
+
+### Map-related frontend files
+- Updated interactive map using Leaflet and OpenStreetMap
+- Added marker rendering and click behavior
+- Added geocoding support for missing coordinates
+
+--- 
 
 ## Example Search
 
@@ -111,6 +303,7 @@ Overall, the project achieved approximately **91% code coverage**.
 **Output:**
 - Matching properties from the database  
 - Additional listings from the RentCast API  
+- Map-based results when applicable
 
 ---
 
@@ -119,6 +312,10 @@ Overall, the project achieved approximately **91% code coverage**.
 ```bash
 pip install requests
 pip install djangorestframework
+pip install channels
+pip install channels-redis
+pip install daphne
+
 ```
 
 Django REST Framework is required for roommate post handling.
@@ -134,8 +331,9 @@ Claude AI was used during frontend development to:
 
 ChatGPT was used for:
 - RentCast API implementation  
-- Debugging API issues  
+- Debugging issues  
 - Ensuring correct data fetching and display  
+- implementing leaflet 
 
 ---
 
@@ -145,5 +343,11 @@ This feature improves the user experience by:
 - Allowing price-based filtering  
 - Expanding listings using an external API  
 - Providing an interactive roommate posting interface  
+- Supporting keyword-based property search  
+- Enabling real-time instant messaging between users  
+- Adding an interactive map for visual property browsing  
+- Strengthening account security through secure authentication 
+- Comparing neighborhood-level living costs through Neighborhood Price Filters
+- Generating curated agent recommendations through Agent Advertising
 
-Overall, it helps students find housing more efficiently while giving them more options.
+Overall, it helps students find housing more efficiently, communicate more easily, and explore more options in a secure and user-friendly platform.
