@@ -16,7 +16,7 @@ Then in asgi.py, wrap your Django app with the ProtocolTypeRouter:
 """
 
 from django.urls import re_path
-from socialPosts.consumers import ListingFeedConsumer   # adjust to your app name
+from socialPosts.consumer import ListingFeedConsumer   # adjust to your app name
 
 websocket_urlpatterns = [
     re_path(r"^ws/feed/$", ListingFeedConsumer.as_asgi()),

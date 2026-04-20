@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'behave_django',
     'channels',
     'chat',
+    'socialPosts',
 ]
 
 MIDDLEWARE = [
