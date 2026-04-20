@@ -12,6 +12,7 @@ Requires:
     pip install channels channels-redis
     # redis running locally (or update CHANNEL_LAYERS to use InMemoryChannelLayer for dev)
 """
+from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from asgiref.sync import async_to_sync
@@ -23,6 +24,8 @@ FEED_GROUP = "listing_feed"
 
 @receiver(post_save, sender=RoommatePost)
 def broadcast_new_listing(sender, instance, created, **kwargs):
+    if getattr(settings, 'TESTING', False):
+        return                          # skip WebSocket broadcast during tests
     if not created:
         return
     channel_layer = get_channel_layer()
