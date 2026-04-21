@@ -384,3 +384,117 @@ def step_all_have_coords(context):
     for prop in data:
         assert 'latitude' in prop, f"Missing latitude: {prop}"
         assert 'longitude' in prop, f"Missing longitude: {prop}"
+
+# Map Filter By Price
+# When Statement
+@when('I submit a map search with price range "{budget}" for "{city}, {state}"')
+def step_search_map_capture_price(context, budget, city, state):
+    from unittest.mock import MagicMock
+    api_result = getattr(context, 'mock_api_result', [])
+    mock = MagicMock(return_value=api_result)
+    with patch('home.views.get_properties', mock):
+        context.response = context.test.client.get(
+            '/map/', {'city': city, 'state': state, 'budget': budget}
+        )
+    context.get_properties_mock = mock
+ 
+# Then Statement
+@then('the property API was called with min_price {mn:d} and max_price {mx:d}')
+def step_api_called_with_prices(context, mn, mx):
+    mock = context.get_properties_mock
+    assert mock.called, "get_properties was never called"
+    kwargs = mock.call_args.kwargs
+    assert kwargs.get('min_price') == mn, (
+        f"Expected min_price={mn}, got {kwargs.get('min_price')}"
+    )
+    assert kwargs.get('max_price') == mx, (
+        f"Expected max_price={mx}, got {kwargs.get('max_price')}"
+    )
+ 
+ 
+ 
+# Social Posts Feed
+# When Statement
+@when('I serialize the post for the social feed')
+def step_serialize_post(context):
+    from socialPosts.serializers import serialize_listing
+    context.serialized = serialize_listing(context.post)
+ 
+# Then Statement
+@then('the serialized listing has status "{status}"')
+def step_serialized_status(context, status):
+    assert context.serialized['status'] == status, (
+        f"Expected status={status}, got {context.serialized['status']}"
+    )
+ 
+# Then Statement
+@then('the serialized listing has rent {rent:d}')
+def step_serialized_rent(context, rent):
+    assert context.serialized['rent'] == float(rent), (
+        f"Expected rent={float(rent)}, got {context.serialized['rent']}"
+    )
+ 
+# Then Statement
+@then('the serialized listing name is "{name}"')
+def step_serialized_name(context, name):
+    assert context.serialized['name'] == name, (
+        f"Expected name={name}, got {context.serialized['name']}"
+    )
+ 
+ 
+ 
+# AI Curated Listings
+# Given Statement
+@given('the AI agent recommends a property at "{address}"')
+def step_ai_recommends(context, address):
+    context.mock_ai_result = {
+        'ok': True,
+        'summary': 'Top match for you.',
+        'advice': 'Tour it soon.',
+        'error': None,
+        'picks': [{
+            'listing': {
+                'location': address,
+                'property_type': 'Apartment',
+                'rent': 1200,
+                'total_monthly_cost': 1420,
+                'neighborhood': 'Boulder Area',
+                'beds': 2,
+                'baths': 1,
+                'nearby_amenities': ['Transit', 'Gym'],
+            },
+            'score': 92,
+            'reasoning': 'Great budget fit.',
+            'highlights': ['Close to transit', 'Under budget'],
+        }],
+    }
+ 
+# When Statement
+@when('I request AI recommendations for city "{city}" and state "{state}"')
+def step_request_ai(context, city, state):
+    ai_result = getattr(context, 'mock_ai_result', {
+        'ok': False, 'summary': '', 'advice': '', 'error': None, 'picks': [],
+    })
+    with patch('home.views.get_properties', return_value=[]), \
+         patch('home.views.get_ai_recommendations', return_value=ai_result):
+        context.response = context.test.client.get(
+            '/ai-agent/', {'city': city, 'state': state}
+        )
+ 
+# Then Statement
+@then('the AI agent response is OK')
+def step_ai_response_ok(context):
+    assert context.response.status_code == 200, (
+        f"Expected 200, got {context.response.status_code}"
+    )
+    data = json.loads(context.response.content)
+    assert data.get('ok') is True, f"Expected ok=True, got {data}"
+ 
+# Then Statement
+@then('the AI picks include an address containing "{needle}"')
+def step_ai_pick_contains(context, needle):
+    data = json.loads(context.response.content)
+    picks = data.get('picks', [])
+    assert any(needle in p.get('address', '') for p in picks), (
+        f'No pick address contained "{needle}". Picks: {picks}'
+    )
