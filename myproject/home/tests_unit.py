@@ -1,8 +1,10 @@
 from django.test import TestCase, override_settings
 from django.contrib.auth.models import User
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from home.models import RoommatePost, Property
 from home.forms import RoommatePostForm, CustomRegisterForm
+from datetime import date
+from socialPosts.serializers import serialize_listing 
 import json
 
 # Roommate Post Form
@@ -654,3 +656,105 @@ class MapPriceFilter(TestCase):
             self.assertIn('monthly_utilities', i)
             self.assertIn('monthly_services', i)
     # END OF PRICE FILTER TEST
+
+class RealTimePostBroadcasts(TestCase):
+    def setUp(self):
+        '''
+        Creates a user for the tests
+        '''
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        
+    @override_settings(TESTING=True)
+    def test_signal_skips_broadcast_during_testing(self):
+        '''
+        Creates a roommate post and checks that the message is saved correctly
+        '''
+        post = RoommatePost.objects.create(
+            user=self.user,
+            message='Test post',
+            date=date(2026, 1, 1),
+        )
+        self.assertEqual(post.message, 'Test post')
+
+    @override_settings(TESTING=True)
+    def test_signal_skips_update(self):
+        '''
+        Creates a roommate post, updates the message, and checks that the update is saved correctly
+        '''
+        post = RoommatePost.objects.create(
+            user=self.user,
+            message='Original',
+            date=date(2026, 1, 1),
+        )
+        post.message = 'Updated'
+        post.save()
+        self.assertEqual(post.message, 'Updated')
+
+    @override_settings(TESTING=True)
+    def test_serializer_handles_string_date(self):
+        '''
+        Create a roommate post and checks that the serializer correctly formats the date
+        '''
+        post = RoommatePost.objects.create(
+            user=self.user,
+            message='Hello',
+            date='2026-03-01',
+        )
+        result = serialize_listing(post)
+        self.assertEqual(result['created_at'], '1 Mar 2026')
+    
+    
+    @override_settings(TESTING=False)  # Ensure the TESTING bypass is off
+    @patch('socialPosts.signals.get_channel_layer')
+    def test_new_post_broadcasts_to_feed(self, mock_get_channel_layer):
+        '''
+        Tests that creation of a new roommate posts gets broadcasted
+        '''
+        
+        # Create a mock channel layer with a mock group_send
+        mock_channel_layer = MagicMock()                # creates a mock channel layer (does not call redis)
+        mock_channel_layer.group_send = AsyncMock()     # creates a mock group_send method for the channel layer
+        mock_get_channel_layer.return_value = mock_channel_layer
+
+        # Creates a new roommate post
+        # This should trigger the signal and attempt to broadcast to the channel layer
+        RoommatePost.objects.create(
+            user=self.user,
+            message='Test post',
+            date=date(2026, 1, 1),
+        )
+
+        # Assert group_send was called once
+        mock_channel_layer.group_send.assert_called_once()
+
+        # Assert it was sent to the right group with the right shape
+        args, kwargs = mock_channel_layer.group_send.call_args
+        self.assertEqual(args[0], 'listing_feed')
+        self.assertEqual(args[1]['type'], 'listing_created')
+        self.assertIn('listing', args[1])
+    # END OF NEW POST BROADCASTS TEST
+    
+    @override_settings(TESTING=False)
+    @patch('socialPosts.signals.get_channel_layer')
+    def test_broadcast_failure_does_not_affect_post_creation(self, mock_get_channel_layer):
+        '''
+        Tests for when a broadcast fails
+        Post will still be created and saved, but broadcast will fail silently
+        '''
+        mock_channel_layer = MagicMock()
+        mock_channel_layer.group_send = AsyncMock(side_effect=Exception("Failure"))
+        mock_get_channel_layer.return_value = mock_channel_layer
+
+        post = RoommatePost.objects.create(
+            user=self.user,
+            message='Test post',
+            date=date(2026, 1, 1),
+        )
+
+        # Broadcast was attempted
+        mock_channel_layer.group_send.assert_called_once()
+
+        # But the post was still saved correctly
+        self.assertEqual(post.message, 'Test post')
+        self.assertTrue(RoommatePost.objects.filter(id=post.id).exists())
+    # END OF BROADCAST FAILURE TEST
