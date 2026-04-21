@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'behave_django',
     'channels',
     'chat',
+    'socialPosts',
 ]
 
 MIDDLEWARE = [
@@ -156,3 +157,6 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+#When tests are run, adjust ASGI Server
+TESTING = False
