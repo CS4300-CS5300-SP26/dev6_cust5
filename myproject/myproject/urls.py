@@ -29,6 +29,7 @@ urlpatterns = [
     path('roommate-posts/', include('home.urls')),
     path('register/', views.register, name='register'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('ai-agent/', views.ai_listing_agent_view, name='ai_listing_agent'),
     path('map/', views.map_view, name='map'),
     path('auth/2fa/setup/', views.setup_2fa, name='2fa_setup'),
     path('chat/', include('chat.urls')),
