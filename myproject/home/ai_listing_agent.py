@@ -132,7 +132,7 @@ def _get_client():
 def get_ai_recommendations(preferences, listings, history=None):
     if not listings:
         return _empty_result(
-            summary="No listings matched your current filters -coverage run -a behave try broadening your search."
+            summary="No listings matched your current filters. Please broaden your search"
         )
 
     client, err = _get_client()
