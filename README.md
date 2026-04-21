@@ -150,6 +150,93 @@ Overall, the project achieved approximately **85% code coverage**.
 
 ---
 
+### 9. Neighborhood Price Filters
+
+We added Neighborhood Price Filters to help users compare the true monthly cost of living in different areas, not just the rent price.
+
+**What was added:** 
+- Neighborhood-based cost breakdown for listings
+- Separate display of rent, utilities, and service costs
+- Total monthly cost calculation
+- Amenity-based filtering
+- Price and total-cost sorting on the map page
+
+**How it works:**
+
+- When a user searches on the map page, listings are retrieved and matched with neighborhood cost profiles
+- Each listing is enriched with:
+- Rent
+- Estimated utilities
+- Estimated service costs
+- Nearby amenities
+- Total monthly cost
+
+Users can filter listings by amenities such as:
+- Grocery
+- Gym
+- Transit
+- Restaurants
+- Coffee
+
+Users can sort listings by:
+
+- Rent: Low to High
+- Rent: High to Low
+- Total Cost: Low to High
+- Total Cost: High to Low
+
+**Map popup details include:**
+
+- Neighborhood name
+- Rent
+- Utilities
+- Services
+- Total monthly cost
+- Matching amenity
+- All nearby amenities
+
+This feature helps users better understand affordability across neighborhoods and compare listings beyond base rent alone.
+
+--- 
+
+### 10. Agent Advertising
+
+We added Agent Advertising to create a curated recommendation system that highlights listings based on the user’s search behavior and preferences.
+
+**What was added:**
+
+- Agent Picks recommendation panel on the map page
+- Listing scoring based on user filters and search choices
+- Curated top listing suggestions
+- Agent match score display
+- Buyer-readiness insight for renters with higher budgets
+
+**How it works:** 
+
+- The system collects information from the user’s selected filters, including:
+
+- City and state
+- Listing type
+- Property type
+- Budget
+- Amenity preference
+- Sort preference
+
+- Listings are scored based on how well they match those preferences
+- The highest-scoring properties are shown in an Agent Picks section
+- Each recommended card includes:
+- Address
+- Property type
+- Rent
+- Total monthly cost
+- Agent match score
+- A recommendation message explains why the listings were selected
+- For some higher-budget renters, the system also displays a message suggesting they may be ready to explore buying options with an agent
+
+This feature expands BearEstate beyond student rentals by supporting real estate agents and helping users discover listings that best fit their needs.
+
+---
+
 ## Files Updated
 
 ### views.py
@@ -158,6 +245,9 @@ Overall, the project achieved approximately **85% code coverage**.
 - Calls the RentCast API  
 - Passes results to templates  
 - Supports keyword search and map-related search behavior
+- Added neighborhood cost enrichment for map listings
+- Added amenity filtering and total-cost sorting
+- Added agent recommendation scoring and curated listing logic
 
 ### rentcast_api.py
 - Sends requests to the RentCast API  
@@ -189,6 +279,12 @@ Overall, the project achieved approximately **85% code coverage**.
 - Added WebSocket routing
 - Added ASGI configuration with Daphne
 - Added Redis-based message handling
+
+### map.html
+
+- Added neighborhood cost breakdown in map popups
+- Added matching amenity and full amenity display
+- Added Agent Picks sidebar with curated recommendations
 
 ### Map-related frontend files
 - Updated interactive map using Leaflet and OpenStreetMap
@@ -250,6 +346,8 @@ This feature improves the user experience by:
 - Supporting keyword-based property search  
 - Enabling real-time instant messaging between users  
 - Adding an interactive map for visual property browsing  
-- Strengthening account security through secure authentication  
+- Strengthening account security through secure authentication 
+- Comparing neighborhood-level living costs through Neighborhood Price Filters
+- Generating curated agent recommendations through Agent Advertising
 
 Overall, it helps students find housing more efficiently, communicate more easily, and explore more options in a secure and user-friendly platform.

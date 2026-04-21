@@ -82,3 +82,52 @@ class Property(models.Model):
 
     def __str__(self):
         return self.title
+    
+class SearchHistory(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        null=True, blank=True, related_name='search_history',
+    )
+    session_key = models.CharField(max_length=40, blank=True, default='')
+ 
+    # Filter values as submitted. 
+    city = models.CharField(max_length=100, blank=True, default='')
+    state = models.CharField(max_length=2, blank=True, default='')
+    listing_type = models.CharField(max_length=20, blank=True, default='')
+    property_type = models.CharField(max_length=20, blank=True, default='')
+    budget = models.CharField(max_length=20, blank=True, default='')
+    amenity_filter = models.CharField(max_length=50, blank=True, default='')
+    sort_by = models.CharField(max_length=20, blank=True, default='')
+    keyword = models.CharField(max_length=200, blank=True, default='')
+ 
+    result_count = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+ 
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(
+                fields=['user', '-created_at'],
+                name='home_sh_user_created_idx',
+            ),
+            models.Index(
+                fields=['session_key', '-created_at'],
+                name='home_sh_session_created_idx',
+            ),
+        ]
+ 
+    def __str__(self):
+        who = self.user.username if self.user else f"anon({self.session_key[:6]})"
+        return f"{who}: {self.city},{self.state} @ {self.created_at:%Y-%m-%d %H:%M}"
+ 
+    def to_prompt_dict(self):
+        """Compact representation for feeding to the AI agent."""
+        return {
+            "city": self.city,
+            "state": self.state,
+            "listing_type": self.listing_type,
+            "property_type": self.property_type,
+            "budget": self.budget,
+            "amenity": self.amenity_filter,
+            "keyword": self.keyword,
+        }
