@@ -29,8 +29,8 @@ def broadcast_new_listing(sender, instance, created, **kwargs):
         return                          # skip WebSocket broadcast during tests
     if not created:
         return
-    if getattr(settings, 'TESTING', False):
-        return
+    #if getattr(settings, 'TESTING', False):
+    #    return
     channel_layer = get_channel_layer()
     if channel_layer is None:
         return
