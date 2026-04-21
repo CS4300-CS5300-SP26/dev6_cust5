@@ -4,11 +4,13 @@ from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 
 from rest_framework import viewsets
+from django.http import JsonResponse
 
-from .models import RoommatePost, Property
+from .models import RoommatePost, Property, SearchHistory
 from .serializers import RoommatePostSerializer
 from .forms import CustomRegisterForm, RoommatePostForm
 from .rentcast_api import get_properties
+from .ai_listing_agent import get_ai_recommendations
 
 import json
 import requests
@@ -640,3 +642,141 @@ def setup_2fa(request):
             return render(request, '2fa_setup.html', ctx)
 
     return render(request, '2fa_setup.html', _totp_context())
+
+
+def _recent_history_for(request, limit=5):
+    qs = SearchHistory.objects.none()
+    if request.user.is_authenticated:
+        qs = SearchHistory.objects.filter(user=request.user)
+    elif request.session.session_key:
+        qs = SearchHistory.objects.filter(
+            session_key=request.session.session_key, user__isnull=True,
+        )
+    return [h.to_prompt_dict() for h in qs[:limit]]
+
+
+def build_enriched_listings(city, state, listing_type, property_type,
+                            price_range, amenity_filter, keyword):
+    if not (city and state):
+        return []
+
+    location_str = f"{city}, {state}"
+    rentcast_results = fetch_filtered_properties(
+        location_str, listing_type, property_type, price_range,
+    )
+
+    enriched = []
+    for prop in rentcast_results:
+        lat = prop.get("latitude")
+        lng = prop.get("longitude")
+        address = prop.get("formattedAddress", "Unknown address")
+        if not (lat and lng) and address:
+            coords = geocode_residential(address)
+            if coords:
+                lat, lng = coords
+        if not (lat and lng):
+            continue
+
+        neighborhood, profile = get_neighborhood_profile(city, state, address)
+        rent = prop.get("price") or 0
+        enriched.append({
+            'latitude': lat, 'longitude': lng, 'location': address,
+            'property_type': prop.get("propertyType", "Unknown type"),
+            'rent': rent,
+            'beds': prop.get("bedrooms"),
+            'baths': prop.get("bathrooms"),
+            'sqft': prop.get("squareFootage"),
+            'neighborhood': neighborhood,
+            'monthly_utilities': profile["monthly_utilities"],
+            'monthly_services': profile["monthly_services"],
+            'nearby_amenities': profile["nearby_amenities"],
+            'total_monthly_cost': rent + profile["monthly_utilities"]
+                                  + profile["monthly_services"],
+        })
+
+    # Apply amenity filter
+    if amenity_filter and amenity_filter.lower() != "any":
+        enriched = [
+            p for p in enriched
+            if any(
+                amenity_filter.lower() in a.lower()
+                for a in p.get("nearby_amenities", [])
+            )
+        ]
+
+    # Apply keyword filter
+    if keyword:
+        kw = keyword.lower()
+        def _match(p):
+            hs = [
+                str(p.get("location", "")).lower(),
+                str(p.get("property_type", "")).lower(),
+                str(p.get("neighborhood", "")).lower(),
+            ] + [str(a).lower() for a in p.get("nearby_amenities", [])]
+            return any(kw in h for h in hs)
+        enriched = [p for p in enriched if _match(p)]
+
+    return enriched
+
+
+def ai_listing_agent_view(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'ok': False,
+            'error': 'Sign in to unlock AI-curated listings based on your search history.',
+            'summary': '', 'advice': '', 'picks': [],
+        })
+ 
+    city = request.GET.get('city', '').strip().title()
+    state = request.GET.get('state', '').strip().upper()
+    listing_type = request.GET.get('intent', '').strip()
+    property_type = request.GET.get('type', '').strip()
+    price_range = request.GET.get('budget', '').strip()
+    amenity_filter = request.GET.get('amenity', '').strip()
+    keyword = request.GET.get('keyword', '').strip()
+ 
+    if not (city and state):
+        return JsonResponse({
+            'ok': False,
+            'error': 'Please run a property search first.',
+            'summary': '', 'advice': '', 'picks': [],
+        })
+ 
+    enriched = build_enriched_listings(
+        city, state, listing_type, property_type,
+        price_range, amenity_filter, keyword,
+    )
+ 
+    preferences = {
+        "city": city, "state": state,
+        "listing_type": listing_type, "property_type": property_type,
+        "budget": price_range, "amenity": amenity_filter,
+        "keyword": keyword,
+    }
+    history = _recent_history_for(request, limit=5)
+ 
+    result = get_ai_recommendations(preferences, enriched, history=history)
+ 
+    picks_out = [
+        {
+            "address": p["listing"].get("location", ""),
+            "property_type": p["listing"].get("property_type", ""),
+            "rent": p["listing"].get("rent", 0),
+            "total_monthly_cost": p["listing"].get("total_monthly_cost", 0),
+            "neighborhood": p["listing"].get("neighborhood", ""),
+            "beds": p["listing"].get("beds"),
+            "baths": p["listing"].get("baths"),
+            "nearby_amenities": p["listing"].get("nearby_amenities", []),
+            "score": p["score"],
+            "reasoning": p["reasoning"],
+            "highlights": p["highlights"],
+        }
+        for p in result["picks"]
+    ]
+    return JsonResponse({
+        "ok": result["ok"],
+        "summary": result["summary"],
+        "advice": result["advice"],
+        "error": result["error"],
+        "picks": picks_out,
+    })
