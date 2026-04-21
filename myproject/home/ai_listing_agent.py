@@ -120,10 +120,10 @@ def _get_client():
             error="openai package is not installed on this server.",
             ok=False,
         )
-    api_key = os.environ.get("OPENAI_API_KEY")
+    api_key = os.environ.get("OPENAI_MODEL5_API_KEY")
     if not api_key:
         return None, _empty_result(
-            error="AI Listing Agent is not configured (missing OPENAI_API_KEY).",
+            error="AI Listing Agent is not configured (missing API KEY).",
             ok=False,
         )
     return OpenAI(api_key=api_key, timeout=API_TIMEOUT_SECONDS), None
