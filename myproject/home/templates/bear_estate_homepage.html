@@ -510,7 +510,6 @@
                     </div>
                 {% endfor %}
             </div>
-        {% endif %}
 
         {% if api_properties %}
             <h2>Additional Listings</h2>
@@ -537,6 +536,7 @@
             {% empty %}
             <p class="feed-empty">No properties match your search. Try adjusting your filters.</p>
             {% endfor %}
+        {% endif %}
         </div>
     </section>
 

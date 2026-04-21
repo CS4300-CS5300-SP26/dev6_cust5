@@ -1,6 +1,6 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.contrib.auth.models import User
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from home.models import RoommatePost, Property
 import json
 
@@ -15,7 +15,6 @@ MOCK_API_RESULT = [
         'bedrooms': 2, 'bathrooms': 1, 'squareFootage': 700,
     }
 ]
-
 
 # Auth Flow
 class AuthFlowIntegrationTest(TestCase):
@@ -384,7 +383,7 @@ class MapPriceFilter(TestCase):
     '''
     Tests the integration of the price filter on the map
     '''
-    
+
     @patch('home.views.get_neighborhood_profile')
     @patch('home.views.fetch_filtered_properties')
     def test_price_filter_returns_correct_properties(self, mock_api, mock_neighborhood):
@@ -420,3 +419,53 @@ class MapPriceFilter(TestCase):
         # Asserts that the returned data is in the correct order
         self.assertEqual(total, [ 1105, 1805, 3305,])
     # END OF PRICE FILTER TEST (TOTAL COST LOW TO HIGH)
+
+class SocialPostsSignalTest(TestCase):
+    def setUp(self):
+        '''
+        Creates a user for the tests
+        '''
+        self.user = User.objects.create_user(username='testuser', password='pass')
+
+    @override_settings(TESTING=False)
+    @patch('socialPosts.signals.get_channel_layer')
+    def test_post_creation_flow_broadcasts_to_feed(self, mock_get_channel_layer):
+        '''
+        Tests the 'flow' of creating a post and having it broadcast to the feed
+        User logs in -> creates a post -> post is saved -> signal fires -> broadcast is sent to channel layer
+        '''
+        
+        # Set up mock channel layer
+        mock_channel_layer = MagicMock()
+        mock_channel_layer.group_send = AsyncMock()
+        mock_get_channel_layer.return_value = mock_channel_layer
+
+        # User logs in
+        login_response = self.client.post('/', {
+            'username': 'testuser',
+            'password': 'pass',
+        })
+        self.assertEqual(login_response.status_code, 302)
+
+        # Creates a new post
+        self.client.post('/roommate-posts/create/', {
+            'message': 'A_test_message',
+            'date': '2026-01-01',
+            'user': self,
+            'status': 'closed',
+            'rent': 100, 
+            'property_type': 'apartment',
+            
+        })
+        response = self.client.get('/roommate-posts/')
+        self.assertContains(response, 'A_test_message')        # Checks if post was successfully created
+
+        # Check post exists in the database
+        self.assertTrue(RoommatePost.objects.filter(message='A_test_message').exists())
+
+        # Checks broadcast status
+        mock_channel_layer.group_send.assert_called_once()
+        args, kwargs = mock_channel_layer.group_send.call_args
+        self.assertEqual(args[0], 'listing_feed')
+        self.assertEqual(args[1]['type'], 'listing_created')
+    # END OF BROADCAST FLOW
