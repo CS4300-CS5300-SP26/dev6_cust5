@@ -325,3 +325,15 @@ class MapPriceFilter(TestCase):
         # Checks status code to ensure filtering was successful and page loaded correctly
         self.assertEqual(response.status_code, 200)
     # END OF PRICE FILTER TEST
+
+class RealTimePosts(TestCase):
+    def tests_for_real_time_posts_fetch(self):
+        '''
+        Checks that the posts will load on the page
+        Checks response from HTML file
+        '''
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'feedList')
+        self.assertContains(response, 'feedStatus')
+    # END OF REAL-TIME POSTS FETCH TEST
