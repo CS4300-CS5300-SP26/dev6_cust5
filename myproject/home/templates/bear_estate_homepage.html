@@ -545,13 +545,13 @@
         <div class="modal-box">
             <button class="modal-close" id="modalClose">✕</button>
             <div class="modal-tabs">
-                <button class="modal-tab active" id="tabLogin">Log In</button>
-                <button class="modal-tab"         id="tabSignup">Sign Up</button>
+                <button class="tab active" id="tabLogin">Log In</button>
+                <button class="tab"         id="tabSignup">Sign Up</button>
             </div>
 
             <!-- Login form -->
             <div id="formLogin">
-                <form method="post" action="/login/">
+                <form method="post" action="{% url 'bear_estate_homepage' %}">
                     {% csrf_token %}
                     <div class="field">
                         <label for="log-username">Username</label>
