@@ -90,7 +90,7 @@ class SearchHistory(models.Model):
     )
     session_key = models.CharField(max_length=40, blank=True, default='')
  
-    # Filter values as submitted — stored as strings to stay flexible.
+    # Filter values as submitted. 
     city = models.CharField(max_length=100, blank=True, default='')
     state = models.CharField(max_length=2, blank=True, default='')
     listing_type = models.CharField(max_length=20, blank=True, default='')
