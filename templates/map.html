@@ -80,39 +80,133 @@
             cursor: pointer;
         }
 
-        .agent-box {
-            margin-top: 20px;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            background: #f8f8f8;
-        }
-
-        .agent-box h4 {
-            margin-bottom: 8px;
-        }
-
-        .agent-card {
-            margin-bottom: 10px;
-            padding: 8px;
-            background: white;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-        }
-
-        .agent-note {
-            margin-top: 10px;
-            padding: 8px;
-            border-radius: 6px;
-            background: #eef7ff;
-            border: 1px solid #c9e3ff;
-            font-size: 13px;
-        }
-
         #map {
             flex: 1;
             height: 100%;
         }
+
+        .ai-box {
+            margin-top: 20px;
+            padding: 14px;
+            border-radius: 8px;
+            background: #fff;
+            border: 2px solid transparent;
+            background-image:
+                linear-gradient(#fff, #fff),
+                linear-gradient(135deg, #6a11cb, #2575fc, #00c6ff);
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
+        }
+        .ai-box h4 {
+            margin-bottom: 6px;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .ai-badge {
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .ai-summary   { font-size: 13px; margin-bottom: 10px; color: #333; }
+        .ai-advice    { font-size: 12px; margin-top: 10px; padding: 8px;
+                        background: #fff9e6; border: 1px solid #f2dca0;
+                        border-radius: 6px; color: #5a4a10; }
+        .ai-error     { font-size: 12px; color: #a33; padding: 6px 0; }
+        .ai-loading   { font-size: 12px; color: #666; font-style: italic; }
+        .ai-pick      { margin-bottom: 10px; padding: 8px;
+                        background: #fafafa; border-radius: 6px;
+                        border: 1px solid #e4e4e4; position: relative; }
+        .ai-pick .addr { font-weight: bold; font-size: 13px;
+                         padding-right: 38px; }
+        .ai-pick .meta { font-size: 12px; color: #555; margin: 2px 0; }
+        .ai-pick .reason { font-size: 12px; margin-top: 4px; color: #222; }
+        .ai-pick .score {
+            position: absolute; top: 8px; right: 8px;
+            font-size: 11px; color: #fff;
+            background: #2575fc; padding: 1px 6px; border-radius: 10px;
+        }
+        .ai-pick .hi-list { margin-top: 6px; display: flex;
+                            flex-wrap: wrap; gap: 4px; }
+        .ai-pick .hi {
+            font-size: 10px; padding: 1px 6px; border-radius: 8px;
+            background: #e9f1ff; color: #1a4bb8;
+        }
+
+        /* ---------- AI chat drawer ---------- */
+        .ai-chat {
+            margin-top: 14px;
+            border: 1px solid #d4d4d4;
+            border-radius: 8px;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .ai-chat-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .ai-chat-status {
+            font-size: 10px; font-weight: 500; opacity: 0.85;
+            letter-spacing: 0.5px; text-transform: uppercase;
+        }
+        .ai-chat-status.ok  { color: #c3f7cc; }
+        .ai-chat-status.err { color: #ffd0cc; }
+        .ai-chat-messages {
+            max-height: 260px; overflow-y: auto;
+            padding: 10px;
+            display: flex; flex-direction: column; gap: 6px;
+            font-size: 13px; line-height: 1.35;
+        }
+        .ai-chat-msg {
+            max-width: 90%;
+            padding: 6px 10px;
+            border-radius: 10px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .ai-chat-msg-user {
+            align-self: flex-end;
+            background: #2575fc; color: #fff;
+            border-bottom-right-radius: 2px;
+        }
+        .ai-chat-msg-assistant {
+            align-self: flex-start;
+            background: #f1f1f4; color: #222;
+            border-bottom-left-radius: 2px;
+        }
+        .ai-chat-msg-system {
+            align-self: center;
+            background: transparent; color: #666;
+            font-style: italic; font-size: 11px;
+            padding: 2px 8px;
+        }
+        .ai-chat-thinking { opacity: 0.6; }
+        .ai-chat-form {
+            display: flex; border-top: 1px solid #e4e4e4;
+        }
+        .ai-chat-input {
+            flex: 1; padding: 8px 10px; border: none; outline: none;
+            font-size: 13px; background: #fff;
+        }
+        .ai-chat-input:disabled { background: #f7f7f7; color: #999; }
+        .ai-chat-send {
+            border: none; padding: 0 14px;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: #fff; font-size: 12px; font-weight: 600;
+            cursor: pointer;
+        }
+        .ai-chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -162,6 +256,11 @@
                 {% csrf_token %}
 
                 <input type="text" name="city" placeholder="Enter a city..." value="{{ city|default:'' }}">
+
+                <label style="font-size: 13px; font-weight: 500;">Keyword</label>
+                <input type="text" name="keyword"
+                       placeholder="e.g. furnished, near campus, gym"
+                       value="{{ keyword|default:'' }}">
 
                 <select name="state">
                     <option value="AL" {% if state == "AL" %}selected{% endif %}>Alabama</option>
@@ -263,26 +362,266 @@
                 <button type="submit">Search</button>
             </form>
 
-            {% if recommended_properties %}
-            <div class="agent-box">
-                <h4>Agent Picks</h4>
-                <p style="font-size: 13px; margin-bottom: 10px;">{{ agent_message }}</p>
-
-                {% for property in recommended_properties %}
-                <div class="agent-card">
-                    <div style="font-weight: bold;">{{ property.location }}</div>
-                    <div>{{ property.property_type }} • ${{ property.rent }}</div>
-                    <div>Total Cost: ${{ property.total_monthly_cost }}</div>
-                    <div>Agent Match Score: {{ property.agent_score }}</div>
+            {# ---------- AI Listing Agent ---------- #}
+            {% if city and state %}
+              {% if request.user.is_authenticated %}
+                <div class="ai-box" id="aiBox">
+                    <h4>AI Listing Agent</h4>
+                    <div id="aiLoading" class="ai-loading">
+                        Curating recommendations based on your filters and search history…
+                    </div>
+                    <div id="aiContent" style="display:none;">
+                        <p id="aiSummary" class="ai-summary"></p>
+                        <div id="aiPicks"></div>
+                        <div id="aiAdvice" class="ai-advice" style="display:none;"></div>
+                    </div>
+                    <div id="aiError" class="ai-error" style="display:none;"></div>
                 </div>
-                {% endfor %}
 
-                {% if buyer_readiness_message %}
-                <div class="agent-note">
-                    {{ buyer_readiness_message }}
+                <script>
+                    (function () {
+                        const box       = document.getElementById("aiBox");
+                        const loading   = document.getElementById("aiLoading");
+                        const content   = document.getElementById("aiContent");
+                        const errorEl   = document.getElementById("aiError");
+                        const summaryEl = document.getElementById("aiSummary");
+                        const picksEl   = document.getElementById("aiPicks");
+                        const adviceEl  = document.getElementById("aiAdvice");
+
+                        function escapeHtml(s) {
+                            return String(s == null ? "" : s)
+                                .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                                .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+                                .replace(/'/g, "&#39;");
+                        }
+
+                        const params = new URLSearchParams({
+                            city:    "{{ city|escapejs }}",
+                            state:   "{{ state|escapejs }}",
+                            intent:  "{{ listing_type|escapejs }}",
+                            type:    "{{ property_type|escapejs }}",
+                            budget:  "{{ price_range|escapejs }}",
+                            amenity: "{{ amenity_filter|escapejs }}",
+                            keyword: "{{ keyword|escapejs }}",
+                        });
+
+                        fetch("/ai-agent/?" + params.toString(), {
+                            headers: { "Accept": "application/json" },
+                            credentials: "same-origin",
+                        })
+                        .then(r => r.json())
+                        .then(data => {
+                            loading.style.display = "none";
+                            if (!data.ok) {
+                                errorEl.style.display = "block";
+                                errorEl.textContent = data.error || "AI agent unavailable.";
+                                return;
+                            }
+                            content.style.display = "block";
+                            summaryEl.textContent = data.summary || "";
+
+                            if (!data.picks || !data.picks.length) {
+                                picksEl.innerHTML =
+                                  '<div class="ai-loading">' +
+                                  'No curated matches, try loosening your filters. </div>';
+                            } else {
+                                picksEl.innerHTML = data.picks.map(p => `
+                                    <div class="ai-pick">
+                                        <span class="score">${p.score}</span>
+                                        <div class="addr">${escapeHtml(p.address)}</div>
+                                        <div class="meta">
+                                          ${escapeHtml(p.property_type)} •
+                                          $${p.rent}/mo •
+                                          total ~$${p.total_monthly_cost}
+                                        </div>
+                                        <div class="reason">${escapeHtml(p.reasoning)}</div>
+                                        ${
+                                          p.highlights && p.highlights.length
+                                            ? '<div class="hi-list">' +
+                                              p.highlights
+                                                .map(h => `<span class="hi">${escapeHtml(h)}</span>`)
+                                                .join("") +
+                                              '</div>'
+                                            : ""
+                                        }
+                                    </div>
+                                `).join("");
+                            }
+
+                            if (data.advice) {
+                                adviceEl.style.display = "block";
+                                adviceEl.textContent = data.advice;
+                            }
+                        })
+                        .catch(err => {
+                            loading.style.display = "none";
+                            errorEl.style.display = "block";
+                            errorEl.textContent = "Could not reach the AI agent.";
+                        });
+                    })();
+                </script>
+
+                <div class="ai-chat" id="aiChat">
+                    <div class="ai-chat-header">
+                        <span>Chat with AI agent</span>
+                        <span id="aiChatStatus" class="ai-chat-status">connecting…</span>
+                    </div>
+                    <div id="aiChatMessages" class="ai-chat-messages"></div>
+                    <form id="aiChatForm" class="ai-chat-form" autocomplete="off">
+                        <input
+                            type="text"
+                            id="aiChatInput"
+                            class="ai-chat-input"
+                            placeholder="Ask about these listings or refine your search…"
+                            maxlength="2000"
+                            disabled
+                        >
+                        <button type="submit" id="aiChatSend" class="ai-chat-send" disabled>Send</button>
+                    </form>
                 </div>
-                {% endif %}
-            </div>
+
+                <script>
+                (function () {
+                    const statusEl   = document.getElementById("aiChatStatus");
+                    const messagesEl = document.getElementById("aiChatMessages");
+                    const formEl     = document.getElementById("aiChatForm");
+                    const inputEl    = document.getElementById("aiChatInput");
+                    const sendBtn    = document.getElementById("aiChatSend");
+
+                    function esc(s) {
+                        return String(s == null ? "" : s)
+                            .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                            .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+                            .replace(/'/g, "&#39;");
+                    }
+
+                    function appendMessage(role, text, opts) {
+                        opts = opts || {};
+                        const div = document.createElement("div");
+                        div.className = "ai-chat-msg ai-chat-msg-" + role;
+                        if (opts.id) div.id = opts.id;
+                        div.textContent = text;
+                        messagesEl.appendChild(div);
+                        messagesEl.scrollTop = messagesEl.scrollHeight;
+                        return div;
+                    }
+
+                    function setStatus(text, cls) {
+                        statusEl.textContent = text;
+                        statusEl.className = "ai-chat-status " + (cls || "");
+                    }
+
+                    function enableInput(enabled) {
+                        inputEl.disabled = !enabled;
+                        sendBtn.disabled = !enabled;
+                        if (enabled) inputEl.focus();
+                    }
+
+                    // Build the WebSocket URL from the same filters the page was loaded with.
+                    const qs = new URLSearchParams({
+                        city:    "{{ city|escapejs }}",
+                        state:   "{{ state|escapejs }}",
+                        intent:  "{{ listing_type|escapejs }}",
+                        type:    "{{ property_type|escapejs }}",
+                        budget:  "{{ price_range|escapejs }}",
+                        amenity: "{{ amenity_filter|escapejs }}",
+                        keyword: "{{ keyword|escapejs }}",
+                    });
+                    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+                    const wsUrl = proto + "//" + location.host + "/ws/ai-agent/?" + qs.toString();
+                    const ws = new WebSocket(wsUrl);
+
+                    let thinkingEl = null;
+
+                    ws.addEventListener("open", () => setStatus("connected", "ok"));
+                    ws.addEventListener("close", (e) => {
+                        setStatus(
+                            e.code === 4401 ? "sign in required"
+                            : e.code === 4400 ? "run a search first"
+                            : "disconnected",
+                            "err"
+                        );
+                        enableInput(false);
+                    });
+                    ws.addEventListener("error", () => setStatus("connection error", "err"));
+
+                    ws.addEventListener("message", (evt) => {
+                        let data;
+                        try { data = JSON.parse(evt.data); } catch { return; }
+
+                        switch (data.type) {
+                            case "ready":
+                                if (data.greeting) appendMessage("assistant", data.greeting);
+                                enableInput(true);
+                                setStatus("ready", "ok");
+                                break;
+
+                            case "user_message":
+                                // Echo from server — already rendered locally, skip.
+                                break;
+
+                            case "thinking":
+                                thinkingEl = appendMessage("assistant", "…", { id: "aiChatThinking" });
+                                thinkingEl.classList.add("ai-chat-thinking");
+                                break;
+
+                            case "assistant_message":
+                                if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+                                appendMessage("assistant", data.text || "");
+                                enableInput(true);
+                                break;
+
+                            case "listings_updated":
+                                // Redraw map pins using the map's existing helpers
+                                // (defined in the Leaflet script block below).
+                                if (typeof clearMarkers === "function" &&
+                                    typeof addMarkers === "function") {
+                                    clearMarkers();
+                                    addMarkers(data.listings || []);
+                                }
+                                const n = (data.listings || []).length;
+                                appendMessage(
+                                    "system",
+                                    n === 0
+                                        ? "No listings match the refined search."
+                                        : "Map updated: " + n + " listing" + (n === 1 ? "" : "s") + " now showing."
+                                );
+                                break;
+
+                            case "error":
+                                if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+                                appendMessage("system", "⚠ " + (data.error || "Something went wrong."));
+                                enableInput(true);
+                                break;
+                        }
+                    });
+
+                    formEl.addEventListener("submit", (e) => {
+                        e.preventDefault();
+                        const text = inputEl.value.trim();
+                        if (!text || ws.readyState !== WebSocket.OPEN) return;
+                        appendMessage("user", text);
+                        ws.send(JSON.stringify({ type: "user_message", text: text }));
+                        inputEl.value = "";
+                        enableInput(false);
+                    });
+                })();
+                </script>
+              {% else %}
+                <div class="ai-box">
+                    <h4>AI Listing Agent</h4>
+                    <p class="ai-summary">
+                        Sign in to get AI-curated picks personalized to your filters and search history.
+                    </p>
+                    <a href="{% url 'bear_estate_homepage' %}"
+                       style="display:inline-block; margin-top:6px; padding:6px 12px;
+                              background:linear-gradient(135deg,#6a11cb,#2575fc);
+                              color:#fff; border-radius:6px; text-decoration:none;
+                              font-size:13px;">
+                        Log in or sign up!
+                    </a>
+                </div>
+              {% endif %}
             {% endif %}
         </div>
 

@@ -18,5 +18,5 @@ def serialize_listing(post):
         "description": (post.message[:110] + "...") if len(post.message) > 110 else post.message,
         "avatar":      None,
         "status":      post.status,
-        "created_at":  raw_date.strftime("%-d %b %Y") if raw_date else "",
+        "created_at":  f"{raw_date.day} {raw_date.strftime('%b %Y')}" if raw_date else "",
     }
