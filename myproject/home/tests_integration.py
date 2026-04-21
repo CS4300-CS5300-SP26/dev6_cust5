@@ -1,8 +1,9 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.contrib.auth.models import User
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from home.models import RoommatePost, Property
 import json
+from home.ai_listing_agent import chat_turn, build_initial_history
 
 MOCK_API_RESULT = [
     {
@@ -15,7 +16,6 @@ MOCK_API_RESULT = [
         'bedrooms': 2, 'bathrooms': 1, 'squareFootage': 700,
     }
 ]
-
 
 # Auth Flow
 class AuthFlowIntegrationTest(TestCase):
@@ -378,3 +378,271 @@ class TwoFAFlowTest(TestCase):
         self.assertEqual(response.status_code, 302)
         profile = UserProfile.objects.get(user=self.user)
         self.assertEqual(profile.two_fa_method, 'email')
+
+# ----------------------------- SPRINT 3 ---------------------------------#
+class MapPriceFilter(TestCase):
+    '''
+    Tests the integration of the price filter on the map
+    '''
+
+    @patch('home.views.get_neighborhood_profile')
+    @patch('home.views.fetch_filtered_properties')
+    def test_price_filter_returns_correct_properties(self, mock_api, mock_neighborhood):
+        '''
+        Parameters: self, intercepts RentCast API (to avoid unnecessary calls)
+        Creates mock data, which includes map_property and neighborhood profile (utilities, services, amenities)
+        Sets the price filter to "Total Cost: Low to High" and runs the view logic
+        Asserts whether the returned data is filtered correctly
+        '''
+        # Mock data for the API response
+        mock_api.return_value = [
+            {'id': '1', 'price': 1500, 'latitude': 40.01, 'longitude': -105.27, 'formattedAddress': '123 Main St'},
+            {'id': '2', 'price': 3000, 'latitude': 40.02, 'longitude': -105.28, 'formattedAddress': '456 Elm St'},
+            {'id': '3', 'price': 800,  'latitude': 40.03, 'longitude': -105.29, 'formattedAddress': '789 Oak St'},
+        ]
+        
+        # Mock data for neighborhood profile (utilities, services, amenities) which is was added to the views.py
+        mock_neighborhood.return_value = ('Downtown', 
+        {
+            'monthly_utilities': 210,
+            'monthly_services': 95,
+            'nearby_amenities': ['Gym'],
+        })
+
+        # Simulates what input the user may make
+        response = self.client.get('/map/', {'city': 'Boulder', 'state': 'CO', 'sort': 'total_cost_asc'})
+        self.assertEqual(response.status_code, 200)     # Ensures the view returns a successful response
+
+        # Extracts the properties from the response context
+        properties = json.loads(response.context.get('properties', '[]'))
+        total = [p['total_monthly_cost'] for p in properties]
+        
+        # Asserts that the returned data is in the correct order
+        self.assertEqual(total, [ 1105, 1805, 3305,])
+    # END OF PRICE FILTER TEST (TOTAL COST LOW TO HIGH)
+
+class SocialPostsSignalTest(TestCase):
+    def setUp(self):
+        '''
+        Creates a user for the tests
+        '''
+        self.user = User.objects.create_user(username='testuser', password='pass')
+
+    @override_settings(TESTING=False)
+    @patch('socialPosts.signals.get_channel_layer')
+    def test_post_creation_flow_broadcasts_to_feed(self, mock_get_channel_layer):
+        '''
+        Tests the 'flow' of creating a post and having it broadcast to the feed
+        User logs in -> creates a post -> post is saved -> signal fires -> broadcast is sent to channel layer
+        '''
+        
+        # Set up mock channel layer
+        mock_channel_layer = MagicMock()
+        mock_channel_layer.group_send = AsyncMock()
+        mock_get_channel_layer.return_value = mock_channel_layer
+
+        # User logs in
+        login_response = self.client.post('/', {
+            'username': 'testuser',
+            'password': 'pass',
+        })
+        self.assertEqual(login_response.status_code, 302)
+
+        # Creates a new post
+        self.client.post('/roommate-posts/create/', {
+            'message': 'A_test_message',
+            'date': '2026-01-01',
+            'user': self,
+            'status': 'closed',
+            'rent': 100, 
+            'property_type': 'apartment',
+            
+        })
+        response = self.client.get('/roommate-posts/')
+        self.assertContains(response, 'A_test_message')        # Checks if post was successfully created
+
+        # Check post exists in the database
+        self.assertTrue(RoommatePost.objects.filter(message='A_test_message').exists())
+
+        # Checks broadcast status
+        mock_channel_layer.group_send.assert_called_once()
+        args, kwargs = mock_channel_layer.group_send.call_args
+        self.assertEqual(args[0], 'listing_feed')
+        self.assertEqual(args[1]['type'], 'listing_created')
+    # END OF BROADCAST FLOW
+
+# AI listing Mock results
+MOCK_RENTCAST_PROPERTIES = [
+    {
+        'id': 'p1',
+        'formattedAddress': '100 Pearl St, Boulder, CO',
+        'city': 'Boulder', 'state': 'CO',
+        'price': 1200,
+        'latitude': 40.01, 'longitude': -105.27,
+        'propertyType': 'Apartment',
+        'bedrooms': 2, 'bathrooms': 1, 'squareFootage': 750,
+    },
+    {
+        'id': 'p2',
+        'formattedAddress': '200 Mapleton Ave, Boulder, CO',
+        'city': 'Boulder', 'state': 'CO',
+        'price': 1800,
+        'latitude': 40.02, 'longitude': -105.28,
+        'propertyType': 'House',
+        'bedrooms': 3, 'bathrooms': 2, 'squareFootage': 1400,
+    },
+]
+ 
+ 
+def _ai_response(content="", tool_calls=None):
+    response = MagicMock()
+    response.choices = [MagicMock()]
+    response.choices[0].message.content = content
+    response.choices[0].message.tool_calls = tool_calls
+    response.choices[0].finish_reason = "stop"
+    return response
+ 
+ 
+def _tool_call(call_id, name, arguments):
+    """Build a fake tool_call object as it would appear on the OpenAI message."""
+    tc = MagicMock()
+    tc.id = call_id
+    tc.function.name = name
+    tc.function.arguments = arguments
+    return tc
+ 
+ 
+# AI Listing Agent
+class AIRecommendationFlowIntegrationTest(TestCase):
+    """
+    End-to-end flow for the HTTP curation endpoint:
+    User logs in -> hits /ai-agent/ with filters -> RentCast is called (mocked)
+    -> listings are enriched with neighborhood data -> OpenAI is called (mocked)
+    -> JSON response with curated picks is returned.
+    """
+ 
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='aiuser', password='Password123!'
+        )
+        self.client.login(username='aiuser', password='Password123!')
+ 
+    @patch('home.ai_listing_agent._get_client')
+    @patch('home.views.fetch_filtered_properties', return_value=MOCK_RENTCAST_PROPERTIES)
+    def test_full_ai_recommendation_flow_returns_curated_picks(
+        self, mock_rentcast, mock_get_client
+    ):
+        # OpenAI mock output: return a valid curation JSON referencing both listings by index.
+        ai_payload = json.dumps({
+            "summary": "2 solid options in Boulder.",
+            "picks": [
+                {
+                    "id": 0, "score": 92,
+                    "reasoning": "Cheaper and near transit.",
+                    "highlights": ["match: budget", "match: transit nearby"],
+                },
+                {
+                    "id": 1, "score": 74,
+                    "reasoning": "Bigger but pricier.",
+                    "highlights": ["more space"],
+                },
+            ],
+            "advice": "Tour the cheaper one first.",
+        })
+        fake_client = MagicMock()
+        fake_client.chat.completions.create.return_value = _ai_response(ai_payload)
+        mock_get_client.return_value = (fake_client, None)
+ 
+        # Simulates user hitting the AI endpoint after running a Boulder rental search.
+        response = self.client.get('/ai-agent/', {
+            'city': 'Boulder', 'state': 'CO',
+            'intent': 'for_rent', 'budget': '900-1400',
+        })
+ 
+        # Endpoint returns a JsonResponse (always 200).
+        self.assertEqual(response.status_code, 200)
+ 
+        body = response.json()
+        self.assertTrue(body['ok'])
+        self.assertEqual(body['summary'], "2 solid options in Boulder.")
+        self.assertEqual(body['advice'], "Tour the cheaper one first.")
+        self.assertEqual(len(body['picks']), 2)
+ 
+        # Each pick should have the address from the original RentCast listing,
+        # plus the score and reasoning supplied by the (mocked) AI.
+        first_pick = body['picks'][0]
+        self.assertEqual(first_pick['address'], '100 Pearl St, Boulder, CO')
+        self.assertEqual(first_pick['score'], 92)
+        self.assertIn('transit', first_pick['reasoning'].lower())
+        self.assertGreater(first_pick['total_monthly_cost'], first_pick['rent'])
+ 
+        # Assert we actually called the API exactly once for this request.
+        fake_client.chat.completions.create.assert_called_once()
+ 
+ 
+class AIChatTurnIntegrationTest(TestCase):
+    """
+    history seeded -> user asks for cheaper places -> model calls refine_search ->
+    refine_callback is invoked with merged filters -> model generates a final
+    text reply on the next turn. This exercises the full tool-calling loop in
+    chat_turn() without needing a live WebSocket.
+    """
+ 
+    @patch('home.ai_listing_agent._get_client')
+    def test_chat_turn_invokes_refine_search_then_returns_text_reply(self, mock_get_client):
+        # Initial state
+        initial_filters = {
+            'city': 'Boulder', 'state': 'CO',
+            'listing_type': 'for_rent', 'property_type': '',
+            'budget': '900-1400', 'amenity': 'any', 'keyword': '',
+        }
+        initial_listings = [
+            {'location': '100 Pearl St', 'rent': 1200, 'total_monthly_cost': 1505,
+             'nearby_amenities': ['Gym']},
+        ]
+        history = build_initial_history(initial_filters, initial_listings)
+        history.append({'role': 'user', 'content': 'Show me cheaper places under $900.'})
+ 
+        # Refine callback returns a new listing set when called with merged filters.
+        new_listings_after_refine = [
+            {'location': '50 Cheaper Rd', 'rent': 800, 'total_monthly_cost': 1050,
+             'nearby_amenities': ['Transit']},
+        ]
+        refine_callback = MagicMock(return_value=new_listings_after_refine)
+ 
+        # OpenAI mock output: first call returns a tool_call, second call returns the reply text.
+        first_response = _ai_response(
+            content="",
+            tool_calls=[_tool_call(
+                'call_001', 'refine_search', json.dumps({'budget': '0-900'})
+            )],
+        )
+        second_response = _ai_response(
+            content="Here's a cheaper option near transit for $800/mo.",
+            tool_calls=None,
+        )
+        fake_client = MagicMock()
+        fake_client.chat.completions.create.side_effect = [first_response, second_response]
+        mock_get_client.return_value = (fake_client, None)
+ 
+        # Run the turn.
+        result = chat_turn(history, initial_filters, initial_listings, refine_callback)
+ 
+        # Assistant reply
+        self.assertTrue(result['ok'])
+        self.assertIn('cheaper', result['reply'].lower())
+        self.assertTrue(result['refined'])
+ 
+        # The callback should have been invoked once with the merged filters
+        refine_callback.assert_called_once()
+        merged = refine_callback.call_args[0][0]
+        self.assertEqual(merged['budget'], '0-900')
+        self.assertEqual(merged['city'], 'Boulder')
+ 
+        # Filters and listings should have been mutated in place to the new state.
+        self.assertEqual(initial_filters['budget'], '0-900')
+        self.assertEqual(initial_listings, new_listings_after_refine)
+ 
+        # OpenAI should have been called twice (tool calling + reply)
+        self.assertEqual(fake_client.chat.completions.create.call_count, 2)
+  

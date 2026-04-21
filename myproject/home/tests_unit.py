@@ -1,9 +1,24 @@
 from django.test import TestCase, override_settings
 from django.contrib.auth.models import User
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from home.models import RoommatePost, Property
 from home.forms import RoommatePostForm, CustomRegisterForm
+from datetime import date
+from socialPosts.serializers import serialize_listing 
 import json
+from home.ai_listing_agent import (
+    _trim_candidates,
+    get_ai_recommendations,
+    build_initial_history,
+    MAX_LISTINGS_SENT,
+)
+from urllib.parse import urlencode
+from asgiref.sync import async_to_sync
+from channels.testing import WebsocketCommunicator
+from django.contrib.auth.models import AnonymousUser, User
+from django.test import TransactionTestCase, override_settings
+from home.consumers import AIListingAgentConsumer
+from home.models import SearchHistory
 
 
 # Roommate Post Form
@@ -613,3 +628,568 @@ class ChatConsumerTest(TestCase):
         msg = Message.objects.get(posting_id=88)
         self.assertIsNone(msg.sender)
         self.assertEqual(msg.sender_label, 'anonymous')
+
+# ----------------------------- SPRINT 3 ---------------------------------#
+# TESTS IF A MODEL HAS CERTAIN FIELDS, ETC.
+class MapPriceFilter(TestCase):
+    '''
+    Tests the integration of the price filter on the map
+    '''
+    @patch('home.views.get_neighborhood_profile')
+    @patch('home.views.fetch_filtered_properties')
+    def test_price_filter_returns_utilities_price_field(self, mock_api, mock_neighborhood):
+        '''
+        Parameters: self, intercepts RentCast API (to avoid unnecessary calls)
+        Creates a mock map_property using mock neighborhood profile data
+        Asserts that the field has been populated/exists
+        '''
+        # Mock data for the API response
+        mock_api.return_value = [
+            {'id': '1', 'price': 1500, 'latitude': 40.01, 'longitude': -105.27, 'formattedAddress': '123 Main St'},
+            {'id': '2', 'price': 3000, 'latitude': 40.02, 'longitude': -105.28, 'formattedAddress': '456 Elm St'},
+            {'id': '3', 'price': 800,  'latitude': 40.03, 'longitude': -105.29, 'formattedAddress': '789 Oak St'},
+        ]
+        
+        # Mock data for neighborhood profile (utilities, services, amenities)
+        mock_neighborhood.return_value = ('Downtown', 
+            {
+            'monthly_utilities': 210,
+            'monthly_services': 95,
+            'nearby_amenities': ['Gym'],
+            }
+        )
+        
+        response = self.client.get('/map/', {'city': 'Boulder', 'state': 'CO', 'sort': 'total_cost_asc'})
+        
+        # Returns list of properties
+        # properties = [{entry1}, {entry2}, ...]
+        properties = json.loads(response.context.get('properties', '[]'))
+        
+        # Asserts that monthly_utilities and monthly_services fields are present in the returned properties
+        for i in properties:
+            self.assertIn('monthly_utilities', i)
+            self.assertIn('monthly_services', i)
+    # END OF PRICE FILTER TEST
+
+class RealTimePostBroadcasts(TestCase):
+    def setUp(self):
+        '''
+        Creates a user for the tests
+        '''
+        self.user = User.objects.create_user(username='testuser', password='pass')
+        
+    @override_settings(TESTING=True)
+    def test_signal_skips_broadcast_during_testing(self):
+        '''
+        Creates a roommate post and checks that the message is saved correctly
+        '''
+        post = RoommatePost.objects.create(
+            user=self.user,
+            message='Test post',
+            date=date(2026, 1, 1),
+        )
+        self.assertEqual(post.message, 'Test post')
+
+    @override_settings(TESTING=True)
+    def test_signal_skips_update(self):
+        '''
+        Creates a roommate post, updates the message, and checks that the update is saved correctly
+        '''
+        post = RoommatePost.objects.create(
+            user=self.user,
+            message='Original',
+            date=date(2026, 1, 1),
+        )
+        post.message = 'Updated'
+        post.save()
+        self.assertEqual(post.message, 'Updated')
+
+    @override_settings(TESTING=True)
+    def test_serializer_handles_string_date(self):
+        '''
+        Create a roommate post and checks that the serializer correctly formats the date
+        '''
+        post = RoommatePost.objects.create(
+            user=self.user,
+            message='Hello',
+            date='2026-03-01',
+        )
+        result = serialize_listing(post)
+        self.assertEqual(result['created_at'], '1 Mar 2026')
+    
+    
+    @override_settings(TESTING=False)  # Ensure the TESTING bypass is off
+    @patch('socialPosts.signals.get_channel_layer')
+    def test_new_post_broadcasts_to_feed(self, mock_get_channel_layer):
+        '''
+        Tests that creation of a new roommate posts gets broadcasted
+        '''
+        
+        # Create a mock channel layer with a mock group_send
+        mock_channel_layer = MagicMock()                # creates a mock channel layer (does not call redis)
+        mock_channel_layer.group_send = AsyncMock()     # creates a mock group_send method for the channel layer
+        mock_get_channel_layer.return_value = mock_channel_layer
+
+        # Creates a new roommate post
+        # This should trigger the signal and attempt to broadcast to the channel layer
+        RoommatePost.objects.create(
+            user=self.user,
+            message='Test post',
+            date=date(2026, 1, 1),
+        )
+
+        # Assert group_send was called once
+        mock_channel_layer.group_send.assert_called_once()
+
+        # Assert it was sent to the right group with the right shape
+        args, kwargs = mock_channel_layer.group_send.call_args
+        self.assertEqual(args[0], 'listing_feed')
+        self.assertEqual(args[1]['type'], 'listing_created')
+        self.assertIn('listing', args[1])
+    # END OF NEW POST BROADCASTS TEST
+    
+    @override_settings(TESTING=False)
+    @patch('socialPosts.signals.get_channel_layer')
+    def test_broadcast_failure_does_not_affect_post_creation(self, mock_get_channel_layer):
+        '''
+        Tests for when a broadcast fails
+        Post will still be created and saved, but broadcast will fail silently
+        '''
+        mock_channel_layer = MagicMock()
+        mock_channel_layer.group_send = AsyncMock(side_effect=Exception("Failure"))
+        mock_get_channel_layer.return_value = mock_channel_layer
+
+        post = RoommatePost.objects.create(
+            user=self.user,
+            message='Test post',
+            date=date(2026, 1, 1),
+        )
+
+        # Broadcast was attempted
+        mock_channel_layer.group_send.assert_called_once()
+
+        # But the post was still saved correctly
+        self.assertEqual(post.message, 'Test post')
+        self.assertTrue(RoommatePost.objects.filter(id=post.id).exists())
+    # END OF BROADCAST FAILURE TEST
+
+def _mock_openai_response(content):
+    """Build a MagicMock that quacks like an OpenAI ChatCompletion response."""
+    response = MagicMock()
+    response.choices = [MagicMock()]
+    response.choices[0].message.content = content
+    response.choices[0].message.tool_calls = None
+    response.choices[0].finish_reason = "stop"
+    return response
+
+
+# AI Listing Agent
+class AIListingAgentUnitTests(TestCase):
+ 
+    def _sample_listing(self, **overrides):
+        base = {
+            'location': '123 Test St, Boulder, CO',
+            'property_type': 'Apartment',
+            'rent': 1200,
+            'beds': 2, 'baths': 1, 'sqft': 700,
+            'neighborhood': 'Downtown',
+            'monthly_utilities': 200,
+            'monthly_services': 80,
+            'nearby_amenities': ['Gym', 'Transit'],
+            'total_monthly_cost': 1480,
+        }
+        base.update(overrides)
+        return base
+ 
+    def test_trim_candidates_assigns_sequential_ids_and_caps_count(self):
+        """
+        _trim_candidates should reindex listings starting at 0 and never send
+        more than MAX_LISTINGS_SENT to the model.
+        """
+        # Generate one more listing than the cap to verify trimming
+        listings = [self._sample_listing(rent=1000 + i) for i in range(MAX_LISTINGS_SENT + 3)]
+        trimmed = _trim_candidates(listings)
+ 
+        self.assertEqual(len(trimmed), MAX_LISTINGS_SENT)
+        # IDs should be 0..N-1 in order
+        self.assertEqual([c['id'] for c in trimmed], list(range(MAX_LISTINGS_SENT)))
+        # Trimmed objects should expose the fields the model needs
+        self.assertIn('address', trimmed[0])
+        self.assertIn('total_monthly_cost', trimmed[0])
+        self.assertIn('nearby_amenities', trimmed[0])
+
+ 
+    def test_get_ai_recommendations_with_no_listings_skips_api_call(self):
+        """
+        With an empty candidate list we should short-circuit and never hit OpenAI.
+        Patching _get_client lets us prove the API client was never asked for.
+        """
+        with patch('home.ai_listing_agent._get_client') as mock_get_client:
+            result = get_ai_recommendations(preferences={'city': 'Boulder'}, listings=[])
+ 
+        self.assertTrue(result['ok'])
+        self.assertEqual(result['picks'], [])
+        self.assertIn('No listings matched', result['summary'])
+        mock_get_client.assert_not_called()
+   
+ 
+    @patch('home.ai_listing_agent._get_client')
+    def test_get_ai_recommendations_parses_valid_json_and_enriches_picks(self, mock_get_client):
+        """
+        When OpenAI returns valid JSON, picks should be enriched with the
+        original listing object and the score should be clamped to 0-100.
+        """
+        ai_payload = json.dumps({
+            "summary": "1 strong match.",
+            "picks": [
+                {
+                    "id": 0,
+                    "score": 150,  # out-of-range
+                    "reasoning": "Great fit.",
+                    "highlights": ["match: budget"],
+                }
+            ],
+            "advice": "Consider visiting in person.",
+        })
+        fake_client = MagicMock()
+        fake_client.chat.completions.create.return_value = _mock_openai_response(ai_payload)
+        mock_get_client.return_value = (fake_client, None)
+ 
+        listings = [self._sample_listing(location='99 Curated Way')]
+        result = get_ai_recommendations(
+            preferences={'city': 'Boulder', 'state': 'CO'},
+            listings=listings,
+        )
+ 
+        self.assertTrue(result['ok'])
+        self.assertEqual(result['summary'], "1 strong match.")
+        self.assertEqual(len(result['picks']), 1)
+ 
+        pick = result['picks'][0]
+        # Score clamped to the 0-100 range
+        self.assertEqual(pick['score'], 100)
+        self.assertEqual(pick['listing']['location'], '99 Curated Way')
+        self.assertEqual(pick['highlights'], ['match: budget'])
+        # The OpenAI client should have been called exactly once
+        fake_client.chat.completions.create.assert_called_once()
+  
+ 
+    @patch('home.ai_listing_agent._get_client')
+    def test_get_ai_recommendations_handles_malformed_json(self, mock_get_client):
+        """If the model returns hallucinated/improper output, the feature should fail gracefully (not crash)."""
+        fake_client = MagicMock()
+        fake_client.chat.completions.create.return_value = _mock_openai_response(
+            "this is definitely not json {{{"
+        )
+        mock_get_client.return_value = (fake_client, None)
+ 
+        result = get_ai_recommendations(
+            preferences={'city': 'Boulder', 'state': 'CO'},
+            listings=[self._sample_listing()],
+        )
+ 
+        self.assertFalse(result['ok'])
+        self.assertEqual(result['picks'], [])
+        self.assertIn('malformed', result['error'].lower())
+
+# AI chatbot
+IN_MEMORY_CHANNEL_LAYERS = {
+    "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
+}
+ 
+def _qs(**params):
+    """Build a urlencoded querystring (bytes) for the consumer scope."""
+    return urlencode(params).encode()
+ 
+ 
+def _build_communicator(user, query_string=b""):
+    communicator = WebsocketCommunicator(
+        AIListingAgentConsumer.as_asgi(),
+        "/ws/ai-agent/",
+    )
+    communicator.scope["user"] = user
+    communicator.scope["query_string"] = query_string
+    return communicator
+ 
+ 
+@override_settings(CHANNEL_LAYERS=IN_MEMORY_CHANNEL_LAYERS)
+class AIListingAgentConsumerConnectTests(TransactionTestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="sahana", password="pw12345678!")
+ 
+    def test_anonymous_user_rejected_with_4401(self):
+        """An unauthenticated connection is closed with code 4401."""
+        async def body():
+            communicator = _build_communicator(AnonymousUser())
+            connected, close_code = await communicator.connect()
+            self.assertFalse(connected)
+            self.assertEqual(close_code, 4401)
+        async_to_sync(body)()
+ 
+    def test_missing_city_or_state_sends_error_then_closes(self):
+        """Connect with no city+state: accept, emit error, close with 4400."""
+        async def body():
+            communicator = _build_communicator(
+                self.user, _qs(intent="for_rent"),  # no city/state
+            )
+            connected, _ = await communicator.connect()
+            self.assertTrue(connected)
+ 
+            msg = await communicator.receive_json_from()
+            self.assertEqual(msg["type"], "error")
+            self.assertIn("property search", msg["error"].lower())
+            await communicator.disconnect()
+        async_to_sync(body)()
+ 
+    def test_happy_connect_sends_ready_event_with_listings(self):
+        """Valid user + city/state: seeds history, emits 'ready' event."""
+        fake_listings = [{
+            "location": "100 Test St, Boulder, CO",
+            "rent": 1200,
+            "property_type": "Apartment",
+            "nearby_amenities": ["Gym"],
+            "total_monthly_cost": 1480,
+            "beds": 2, "baths": 1, "sqft": 700,
+            "neighborhood": "Downtown",
+            "monthly_utilities": 200, "monthly_services": 80,
+        }]
+ 
+        async def body():
+            with patch(
+                "home.views.build_enriched_listings",
+                return_value=fake_listings,
+            ):
+                communicator = _build_communicator(
+                    self.user,
+                    _qs(city="Boulder", state="CO", intent="for_rent"),
+                )
+                connected, _ = await communicator.connect()
+                self.assertTrue(connected)
+ 
+                ready = await communicator.receive_json_from()
+                self.assertEqual(ready["type"], "ready")
+                self.assertEqual(ready["filters"]["city"], "Boulder")
+                self.assertEqual(ready["filters"]["state"], "CO")
+                self.assertEqual(ready["listings"], fake_listings)
+                self.assertTrue(
+                    "1 listings" in ready["greeting"]
+                    or "Boulder" in ready["greeting"]
+                )
+                await communicator.disconnect()
+        async_to_sync(body)()
+ 
+    def test_connect_swallows_build_enriched_listings_exception(self):
+        """If build_enriched_listings raises, listings is [] and 'ready' still fires."""
+        async def body():
+            with patch(
+                "home.views.build_enriched_listings",
+                side_effect=RuntimeError("rentcast down"),
+            ):
+                communicator = _build_communicator(
+                    self.user, _qs(city="Boulder", state="CO"),
+                )
+                connected, _ = await communicator.connect()
+                self.assertTrue(connected)
+ 
+                ready = await communicator.receive_json_from()
+                self.assertEqual(ready["type"], "ready")
+                self.assertEqual(ready["listings"], [])
+                await communicator.disconnect()
+        async_to_sync(body)()
+ 
+ 
+@override_settings(CHANNEL_LAYERS=IN_MEMORY_CHANNEL_LAYERS)
+class AIListingAgentConsumerReceiveTests(TransactionTestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="sahana", password="pw12345678!")
+ 
+    def _build(self):
+        return _build_communicator(self.user, _qs(city="Boulder", state="CO"))
+ 
+    def test_receive_non_json_sends_error(self):
+        async def body():
+            with patch("home.views.build_enriched_listings", return_value=[]):
+                communicator = self._build()
+                await communicator.connect()
+                await communicator.receive_json_from()  # 'ready'
+ 
+                await communicator.send_to(text_data="not-json {{{")
+                err = await communicator.receive_json_from()
+                self.assertEqual(err["type"], "error")
+                self.assertIn("parse", err["error"].lower())
+                await communicator.disconnect()
+        async_to_sync(body)()
+ 
+    def test_receive_unknown_type_sends_error(self):
+        async def body():
+            with patch("home.views.build_enriched_listings", return_value=[]):
+                communicator = self._build()
+                await communicator.connect()
+                await communicator.receive_json_from()  # 'ready'
+ 
+                await communicator.send_to(
+                    text_data=json.dumps({"type": "weird", "text": "hi"})
+                )
+                err = await communicator.receive_json_from()
+                self.assertEqual(err["type"], "error")
+                self.assertIn("unknown", err["error"].lower())
+                await communicator.disconnect()
+        async_to_sync(body)()
+ 
+    def test_receive_empty_text_is_silently_ignored(self):
+        async def body():
+            with patch("home.views.build_enriched_listings", return_value=[]):
+                communicator = self._build()
+                await communicator.connect()
+                await communicator.receive_json_from()  # 'ready'
+ 
+                await communicator.send_to(
+                    text_data=json.dumps({"type": "user_message", "text": "   "})
+                )
+                self.assertTrue(await communicator.receive_nothing(timeout=0.3))
+                await communicator.disconnect()
+        async_to_sync(body)()
+ 
+    def test_receive_happy_path_echoes_and_returns_assistant_message(self):
+        """user_message -> echo, thinking, assistant_message."""
+        fake_turn_result = {
+            "ok": True, "reply": "Here's what I think.",
+            "refined": False, "filters": {}, "listings": [], "error": None,
+        }
+ 
+        async def body():
+            with patch("home.views.build_enriched_listings", return_value=[]), \
+                 patch(
+                     "home.ai_listing_agent.chat_turn",
+                     return_value=fake_turn_result,
+                 ):
+                communicator = self._build()
+                await communicator.connect()
+                await communicator.receive_json_from()  # 'ready'
+ 
+                await communicator.send_to(
+                    text_data=json.dumps({"type": "user_message", "text": "hi"})
+                )
+ 
+                echo = await communicator.receive_json_from()
+                self.assertEqual(echo, {"type": "user_message", "text": "hi"})
+ 
+                thinking = await communicator.receive_json_from()
+                self.assertEqual(thinking, {"type": "thinking"})
+ 
+                reply = await communicator.receive_json_from()
+                self.assertEqual(reply["type"], "assistant_message")
+                self.assertEqual(reply["text"], "Here's what I think.")
+                await communicator.disconnect()
+        async_to_sync(body)()
+ 
+    def test_receive_truncates_text_over_2000_chars(self):
+        fake_turn_result = {
+            "ok": True, "reply": "ok", "refined": False,
+            "filters": {}, "listings": [], "error": None,
+        }
+        long_text = "a" * 2500
+ 
+        async def body():
+            with patch("home.views.build_enriched_listings", return_value=[]), \
+                 patch(
+                     "home.ai_listing_agent.chat_turn",
+                     return_value=fake_turn_result,
+                 ):
+                communicator = self._build()
+                await communicator.connect()
+                await communicator.receive_json_from()  # 'ready'
+ 
+                await communicator.send_to(
+                    text_data=json.dumps(
+                        {"type": "user_message", "text": long_text}
+                    )
+                )
+ 
+                echo = await communicator.receive_json_from()
+                self.assertEqual(echo["type"], "user_message")
+                self.assertEqual(len(echo["text"]), 2000)
+                await communicator.receive_json_from()  # thinking
+                await communicator.receive_json_from()  # assistant_message
+                await communicator.disconnect()
+        async_to_sync(body)()
+ 
+    def test_receive_refine_path_emits_listings_updated_and_logs_history(self):
+        new_listings = [{"location": "999 New Place"}]
+        fake_turn_result = {
+            "ok": True, "reply": "I updated your search.", "refined": True,
+            "filters": {}, "listings": new_listings, "error": None,
+        }
+ 
+        # chat_turn is expected to mutate the `listings` arg in place
+        def fake_chat_turn(history, filters, listings, refine):
+            listings[:] = new_listings
+            return fake_turn_result
+ 
+        async def body():
+            with patch("home.views.build_enriched_listings", return_value=[]), \
+                 patch(
+                     "home.ai_listing_agent.chat_turn",
+                     side_effect=fake_chat_turn,
+                 ):
+                communicator = self._build()
+                await communicator.connect()
+                await communicator.receive_json_from()  # 'ready'
+ 
+                await communicator.send_to(
+                    text_data=json.dumps(
+                        {"type": "user_message", "text": "cheaper"}
+                    )
+                )
+ 
+                await communicator.receive_json_from()  # echo
+                await communicator.receive_json_from()  # thinking
+ 
+                listings_evt = await communicator.receive_json_from()
+                self.assertEqual(listings_evt["type"], "listings_updated")
+                self.assertEqual(listings_evt["listings"], new_listings)
+ 
+                reply_evt = await communicator.receive_json_from()
+                self.assertEqual(reply_evt["type"], "assistant_message")
+                await communicator.disconnect()
+ 
+        before = SearchHistory.objects.count()
+        async_to_sync(body)()
+        self.assertEqual(SearchHistory.objects.count(), before + 1)
+ 
+    def test_receive_chat_turn_failure_sends_error(self):
+        fake_turn_result = {
+            "ok": False, "reply": "", "refined": False,
+            "filters": {}, "listings": [], "error": "LLM blew up",
+        }
+ 
+        async def body():
+            with patch("home.views.build_enriched_listings", return_value=[]), \
+                 patch(
+                     "home.ai_listing_agent.chat_turn",
+                     return_value=fake_turn_result,
+                 ):
+                communicator = self._build()
+                await communicator.connect()
+                await communicator.receive_json_from()  # 'ready'
+ 
+                await communicator.send_to(
+                    text_data=json.dumps({"type": "user_message", "text": "hi"})
+                )
+                await communicator.receive_json_from()  # echo
+                await communicator.receive_json_from()  # thinking
+                err = await communicator.receive_json_from()
+                self.assertEqual(err["type"], "error")
+                self.assertIn("LLM blew up", err["error"])
+                await communicator.disconnect()
+        async_to_sync(body)()
+ 
+    def test_disconnect_runs_cleanly(self):
+        """disconnect() is a no-op but must not raise."""
+        async def body():
+            with patch("home.views.build_enriched_listings", return_value=[]):
+                communicator = self._build()
+                await communicator.connect()
+                await communicator.receive_json_from() 
+                await communicator.disconnect()  
+        async_to_sync(body)()

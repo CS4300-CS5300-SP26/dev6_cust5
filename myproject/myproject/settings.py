@@ -14,7 +14,7 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "test-secret-key")
 #DJANGO_SECRET_KEY='%@fg1g!5bi2+$g9jasg462z92o6*sm(32@f@w703bd&v8r8o4%'
 #DEBUG = "TRUE"
 #DEBUG = os.environ.get("DEBUG", "False") == "True"
-DEBUG=False
+DEBUG = True
 
 ALLOWED_HOSTS = ["bearestate.me", "www.bearestate.me", "premain.bearestate.me", "127.0.0.1", "localhost", ]
 
@@ -29,7 +29,7 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # API KEYS
 RENTCAST_API_KEY = os.environ.get("RENTCAST_API_KEY")
-
+OPENAI_MODEL5_API_KEY = os.environ.get("OPENAI_MODEL5_API_KEY")
 
 INSTALLED_APPS = [
     'daphne',
@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'behave_django',
     'channels',
     'chat',
+    'socialPosts',
 ]
 
 MIDDLEWARE = [
@@ -156,3 +157,6 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+#When tests are run, adjust ASGI Server
+TESTING = False
