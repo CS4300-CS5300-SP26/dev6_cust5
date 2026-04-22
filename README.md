@@ -228,18 +228,7 @@ This sprint, we implemented the **Social Posts** functionality, which creates a 
 
 ---
 
-### 11. Additional Testing Contributions
-
-During this sprint, we also took over a portion of the **functional, unit, and integration testing** . In particular, we created tests for the **Neighborhood Price Comparison** feature and the **Social Posts** feature.
-
-We developed tests to verify:
-- Page load status
-- Correct application of filter logic
-- Real-time broadcasting behavior
-
----
-
-### 12. Testing Approach (TDD)
+### 11. Testing Approach (TDD)
 
 We followed a test-driven development (TDD) approach using the **red–green–refactor cycle**.
 
@@ -253,6 +242,20 @@ We followed a test-driven development (TDD) approach using the **red–green–r
 - Roommate posting tests (create, view, close, delete, permission checks)  
 
 Overall, the project achieved approximately **85% code coverage**.
+
+---
+
+### 12. Additional Testing Contributions
+
+During this sprint, we also took over a portion of the **functional, unit, and integration testing** . In particular, we created tests for the **Neighborhood Price Comparison** feature and the **Social Posts** feature.
+
+We developed tests to verify:
+- Page load status
+- Correct application of filter logic
+- Real-time broadcasting behavior
+
+---
+
 
 
 ## Files Updated
