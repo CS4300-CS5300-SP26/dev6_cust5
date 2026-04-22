@@ -20,7 +20,7 @@ jobs:
     steps:
       #check out the repository code
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       #scan dependency changes in the pull request and fail only on high or critical issues
       - name: Dependency review
