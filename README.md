@@ -133,24 +133,9 @@ This improves account security and helps prevent unauthorized access.
 
 ---
 
-### 8. Testing Approach (TDD)
 
-We followed a test-driven development (TDD) approach using the **red–green–refactor cycle**.
 
-- Red: Wrote tests before implementation  
-- Green: Implemented features until tests passed  
-- Refactor: Cleaned and improved code  
-
-**Tests included:**
-- Registration tests (signup, login, invalid inputs)  
-- Property search tests (location filtering, price filtering, API mocking)  
-- Roommate posting tests (create, view, close, delete, permission checks)  
-
-Overall, the project achieved approximately **85% code coverage**.
-
----
-
-### 9. Neighborhood Price Filters
+### 8. Neighborhood Price Filters
 
 We added Neighborhood Price Filters to help users compare the true monthly cost of living in different areas, not just the rent price.
 
@@ -199,7 +184,7 @@ This feature helps users better understand affordability across neighborhoods an
 
 --- 
 
- ### 10. AI Listing Agent and AI Chatbot
+ ### 9. AI Listing Agent and AI Chatbot
 
 We implemented an **AI Listing Agent** and an **AI-powered chatbot** to make the housing search experience more interactive, personalized, and responsive.
 
@@ -220,20 +205,11 @@ We implemented an **AI Listing Agent** and an **AI-powered chatbot** to make the
 - A scoring mechanism ranks listings using user preferences, prior queries, and relevant listing attributes  
 
 This feature improves the housing search experience by making recommendations smarter, more personalized, and more responsive to user needs.
----
-
-### 11. Additional Testing Contributions
-
-During this sprint, we also took over a portion of the **functional, unit, and integration testing** . In particular, we created tests for the **Neighborhood Price Comparison** feature and the **Social Posts** feature.
-
-We developed tests to verify:
-- Page load status
-- Correct application of filter logic
-- Real-time broadcasting behavior
 
 ---
 
-### 12. Social Posts Feed
+
+### 10. Social Posts Feed
 
 This sprint, we implemented the **Social Posts** functionality, which creates a feed of the most recently posted listings for users to view directly from the homepage.
 
@@ -251,6 +227,32 @@ This sprint, we implemented the **Social Posts** functionality, which creates a 
 - The feature connects frontend page updates with backend database retrieval to keep the feed current and interactive
 
 ---
+
+### 11. Additional Testing Contributions
+
+During this sprint, we also took over a portion of the **functional, unit, and integration testing** . In particular, we created tests for the **Neighborhood Price Comparison** feature and the **Social Posts** feature.
+
+We developed tests to verify:
+- Page load status
+- Correct application of filter logic
+- Real-time broadcasting behavior
+
+---
+
+### 12. Testing Approach (TDD)
+
+We followed a test-driven development (TDD) approach using the **red–green–refactor cycle**.
+
+- Red: Wrote tests before implementation  
+- Green: Implemented features until tests passed  
+- Refactor: Cleaned and improved code  
+
+**Tests included:**
+- Registration tests (signup, login, invalid inputs)  
+- Property search tests (location filtering, price filtering, API mocking)  
+- Roommate posting tests (create, view, close, delete, permission checks)  
+
+Overall, the project achieved approximately **85% code coverage**.
 
 
 ## Files Updated
