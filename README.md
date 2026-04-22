@@ -199,43 +199,59 @@ This feature helps users better understand affordability across neighborhoods an
 
 --- 
 
-### 10. Agent Advertising
+ ### 10. AI Listing Agent and AI Chatbot
 
-We added Agent Advertising to create a curated recommendation system that highlights listings based on the user’s search behavior and preferences.
+We implemented an **AI Listing Agent** and an **AI-powered chatbot** to make the housing search experience more interactive, personalized, and responsive.
 
 **What was added:**
+- An AI chatbot built on **WebSockets** for real-time interaction  
+- Deployment using **Daphne** with Django’s **ASGI** interface  
+- Tool-calling functionality for dynamic backend function execution  
+- Personalized listing recommendations based on user history  
+- A scoring system to rank listings according to relevance  
 
-- Agent Picks recommendation panel on the map page
-- Listing scoring based on user filters and search choices
-- Curated top listing suggestions
-- Agent match score display
-- Buyer-readiness insight for renters with higher budgets
+**How it works:**
+- The chatbot communicates with users in real time through **WebSocket** connections  
+- **Daphne** serves the Django application through **ASGI**, allowing it to efficiently handle concurrent connections  
+- The model can invoke backend functions through tool calling to retrieve and process listing data dynamically  
+- Based on user queries, the system can interpret filters, keywords, and preferences, fetch relevant listing data, and return structured, context-aware responses  
+- The AI Listing Agent maintains a history of user interactions and prior searches  
+- This history is used to generate personalized recommendations  
+- A scoring mechanism ranks listings using user preferences, prior queries, and relevant listing attributes  
 
-**How it works:** 
+This feature improves the housing search experience by making recommendations smarter, more personalized, and more responsive to user needs.
+---
 
-- The system collects information from the user’s selected filters, including:
+### 11. Additional Testing Contributions
 
-- City and state
-- Listing type
-- Property type
-- Budget
-- Amenity preference
-- Sort preference
+During this sprint, we also took over a portion of the **functional, unit, and integration testing** . In particular, we created tests for the **Neighborhood Price Comparison** feature and the **Social Posts** feature.
 
-- Listings are scored based on how well they match those preferences
-- The highest-scoring properties are shown in an Agent Picks section
-- Each recommended card includes:
-- Address
-- Property type
-- Rent
-- Total monthly cost
-- Agent match score
-- A recommendation message explains why the listings were selected
-- For some higher-budget renters, the system also displays a message suggesting they may be ready to explore buying options with an agent
-
-This feature expands BearEstate beyond student rentals by supporting real estate agents and helping users discover listings that best fit their needs.
+We developed tests to verify:
+- Page load status
+- Correct application of filter logic
+- Real-time broadcasting behavior
 
 ---
+
+### 12. Social Posts Feed
+
+This sprint, we implemented the **Social Posts** functionality, which creates a feed of the most recently posted listings for users to view directly from the homepage.
+
+**What was added:**
+- A homepage feed showing the latest listing posts
+- Real-time updating behavior using **ASGI**
+- Direct navigation from the homepage feed to listing pages
+- Backend integration to pull listing data from the database
+- Frontend updates to support feed display and user interaction
+
+**How it works:**
+- The homepage repeatedly checks for newly created posts using **ASGI-based** updates
+- Newly added listings are displayed in a feed so users can quickly see the most recent posts
+- Users can click on listings from the homepage feed to view more details or navigate to the listing creation flow
+- The feature connects frontend page updates with backend database retrieval to keep the feed current and interactive
+
+---
+
 
 ## Files Updated
 
