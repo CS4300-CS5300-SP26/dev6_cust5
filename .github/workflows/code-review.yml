@@ -76,7 +76,7 @@ jobs:
 
       #upload the generated markdown feedback as a workflow artifact
       - name: Upload feedback artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ai-code-review-feedback
           path: feedback.md
