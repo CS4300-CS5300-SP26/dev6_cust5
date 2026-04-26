@@ -15,5 +15,10 @@ urlpatterns = [
     path('<int:post_id>/close/', views.roommate_close, name='roommate_close'),
     path('api/', include(router.urls)),
     path('search/', views.search, name='search'),
-    
+
+    path('agents/ads/', views.agent_ad_list, name='agent_ad_list'),
+    path('agents/ads/create/', views.agent_ad_create, name='agent_ad_create'),
+    path('agents/ads/<int:ad_id>/edit/', views.agent_ad_edit, name='agent_ad_edit'),
+    path('agents/ads/<int:ad_id>/deactivate/', views.agent_ad_deactivate, name='agent_ad_deactivate'),
+    path('agents/<int:ad_id>/', views.agent_profile, name='agent_profile'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
