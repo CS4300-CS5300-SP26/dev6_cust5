@@ -362,6 +362,28 @@
                 <button type="submit">Search</button>
             </form>
 
+            {% if agent_ads %}
+  <div class="agent-ad-box" style="border: 2px solid #1d6f8f; border-radius: 8px; padding: 14px; margin: 16px 0; background: white;">
+    <h3 style="margin-top: 0;">Local Agent Spotlight</h3>
+
+    {% for ad in agent_ads %}
+      <div style="margin-bottom: 12px;">
+        <strong>{{ ad.headline }}</strong>
+        <p style="margin: 6px 0;">{{ ad.brokerage }}</p>
+        <p style="margin: 6px 0;">{{ ad.city }}, {{ ad.state }}</p>
+
+        {% if ad.specialties %}
+          <p style="margin: 6px 0;">{{ ad.specialties }}</p>
+        {% endif %}
+
+        <a href="/roommate-posts/agents/{{ ad.id }}/">
+          View profile and contact
+        </a>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %} 
+
             {# ---------- AI Listing Agent ---------- #}
             {% if city and state %}
               {% if request.user.is_authenticated %}
