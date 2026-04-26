@@ -13,7 +13,7 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "test-secret-key")
 
 #DEBUG = "TRUE"
 #DEBUG = os.environ.get("DEBUG", "False") == "True"
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ["bearestate.me", "www.bearestate.me", "premain.bearestate.me", "127.0.0.1", "localhost", ]
 
@@ -116,8 +116,11 @@ USE_TZ = True
 # Static files
 
 STATIC_URL = '/static/'
-STATIC_ROOT = Path(os.environ.get("STATIC_ROOT_PATH", str(BASE_DIR / "staticfiles")))
-STATICFILES_DIRS = [BASE_DIR / 'home' / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'home' / 'static',
+]
 
 # Media Files
 MEDIA_URL = "/media/"
