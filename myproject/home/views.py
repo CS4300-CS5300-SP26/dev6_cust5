@@ -6,9 +6,9 @@ from django.utils import timezone
 from rest_framework import viewsets
 from django.http import JsonResponse
 
-from .models import RoommatePost, Property, SearchHistory
+from .models import AgentAd, AgentInquiry, RoommatePost, Property, SearchHistory
 from .serializers import RoommatePostSerializer
-from .forms import CustomRegisterForm, RoommatePostForm
+from .forms import AgentAdForm, AgentInquiryForm, CustomRegisterForm, RoommatePostForm
 from .rentcast_api import get_properties
 from .ai_listing_agent import get_ai_recommendations
 
@@ -21,24 +21,23 @@ import qrcode, io, base64
 # ---------------------- NEIGHBORHOOD MOCK DATA ---------------------- #
 
 NEIGHBORHOOD_COSTS = {
-    
     ("Austin", "TX"): {
-    "Downtown": {
-        "monthly_utilities": 190,
-        "monthly_services": 85,
-        "nearby_amenities": ["Gym", "Restaurants", "Transit", "Coffee Shop", "Grocery Store"],
+        "Downtown": {
+            "monthly_utilities": 190,
+            "monthly_services": 85,
+            "nearby_amenities": ["Gym", "Restaurants", "Transit", "Coffee Shop", "Grocery Store"],
+        },
+        "University Area": {
+            "monthly_utilities": 170,
+            "monthly_services": 70,
+            "nearby_amenities": ["Gym", "Transit", "Coffee Shop", "Restaurants"],
+        },
+        "Default": {
+            "monthly_utilities": 160,
+            "monthly_services": 65,
+            "nearby_amenities": ["Grocery Store", "Gym", "Restaurants", "Transit", "Coffee Shop"],
+        },
     },
-    "University Area": {
-        "monthly_utilities": 170,
-        "monthly_services": 70,
-        "nearby_amenities": ["Gym", "Transit", "Coffee Shop", "Restaurants"],
-    },
-    "Default": {
-        "monthly_utilities": 160,
-        "monthly_services": 65,
-        "nearby_amenities": ["Grocery Store", "Gym", "Restaurants", "Transit", "Coffee Shop"],
-    },
-},
     ("Boulder", "CO"): {
         "Downtown": {
             "monthly_utilities": 210,
@@ -191,14 +190,153 @@ def get_buyer_readiness_message(user_preferences):
     return ""
 
 
+def user_is_verified_agent(user):
+    return (
+        user.is_authenticated
+        and hasattr(user, 'profile')
+        and user.profile.is_agent_verified
+    )
+
+
+def get_relevant_agent_ads(city='', state='', limit=3):
+    """
+    Return active, complete ads matching the search location when possible.
+    If no city/state is provided, it returns active complete ads generally.
+    """
+    ads = AgentAd.objects.filter(active=True).select_related('agent')
+
+    if city:
+        ads = ads.filter(city__iexact=city)
+
+    if state:
+        ads = ads.filter(state__iexact=state)
+
+    complete_ads = [ad for ad in ads if ad.is_complete]
+    return complete_ads[:limit]
+
+
+@login_required
+def agent_ad_list(request):
+    if not user_is_verified_agent(request.user):
+        return render(request, 'agent_ads/not_verified.html', status=403)
+
+    ads = AgentAd.objects.filter(agent=request.user)
+    return render(request, 'agent_ads/list.html', {'ads': ads})
+
+
+@login_required
+def agent_ad_create(request):
+    if not user_is_verified_agent(request.user):
+        return render(request, 'agent_ads/not_verified.html', status=403)
+
+    if request.method == 'POST':
+        form = AgentAdForm(request.POST)
+        if form.is_valid():
+            ad = form.save(commit=False)
+            ad.agent = request.user
+            ad.state = ad.state.upper()
+            ad.save()
+            return redirect('agent_ad_list')
+    else:
+        form = AgentAdForm(initial={
+            'email': request.user.email,
+        })
+
+    return render(request, 'agent_ads/form.html', {
+        'form': form,
+        'title': 'Create Agent Advertisement',
+    })
+
+
+@login_required
+def agent_ad_edit(request, ad_id):
+    if not user_is_verified_agent(request.user):
+        return render(request, 'agent_ads/not_verified.html', status=403)
+
+    ad = get_object_or_404(AgentAd, id=ad_id, agent=request.user)
+
+    if request.method == 'POST':
+        form = AgentAdForm(request.POST, instance=ad)
+        if form.is_valid():
+            ad = form.save(commit=False)
+            ad.state = ad.state.upper()
+            ad.save()
+            return redirect('agent_ad_list')
+    else:
+        form = AgentAdForm(instance=ad)
+
+    return render(request, 'agent_ads/form.html', {
+        'form': form,
+        'title': 'Edit Agent Advertisement',
+    })
+
+
+@login_required
+def agent_ad_deactivate(request, ad_id):
+    if not user_is_verified_agent(request.user):
+        return render(request, 'agent_ads/not_verified.html', status=403)
+
+    ad = get_object_or_404(AgentAd, id=ad_id, agent=request.user)
+
+    if request.method == 'POST':
+        ad.active = False
+        ad.save(update_fields=['active', 'updated_at'])
+
+    return redirect('agent_ad_list')
+
+
+def agent_profile(request, ad_id):
+    ad = get_object_or_404(AgentAd, id=ad_id, active=True)
+
+    if not ad.is_complete:
+        return render(request, 'agent_ads/not_found.html', status=404)
+
+    if request.method == 'POST':
+        form = AgentInquiryForm(request.POST)
+        if form.is_valid():
+            inquiry = form.save(commit=False)
+            inquiry.ad = ad
+
+            if request.user.is_authenticated:
+                inquiry.user = request.user
+
+            inquiry.save()
+
+            return render(request, 'agent_ads/profile.html', {
+                'ad': ad,
+                'form': AgentInquiryForm(),
+                'message_sent': True,
+            })
+    else:
+        initial = {}
+
+        if request.user.is_authenticated:
+            initial = {
+                'name': request.user.get_full_name() or request.user.username,
+                'email': request.user.email,
+            }
+
+        form = AgentInquiryForm(initial=initial)
+
+    return render(request, 'agent_ads/profile.html', {
+        'ad': ad,
+        'form': form,
+    })
+
+
 # ------------------------------- HTML views -------------------------------- #
 
 # Home page
 def search(request):
     properties = Property.objects.all()
 
+    city = request.GET.get('city', '').strip().title()
+    state = request.GET.get('state', '').strip().upper()
+    agent_ads = get_relevant_agent_ads(city=city, state=state)
+
     return render(request, "search.html", {
-        "properties": properties
+        "properties": properties,
+        "agent_ads": agent_ads,
     })
 
 
@@ -411,7 +549,9 @@ def map_view(request):
         'recommended_properties': recommended_properties,
         'agent_message': agent_message,
         'buyer_readiness_message': buyer_readiness_message,
+        'agent_ads': get_relevant_agent_ads(city=city, state=state),
     }
+
     return render(request, 'map.html', context)
 
 
@@ -707,6 +847,7 @@ def build_enriched_listings(city, state, listing_type, property_type,
     # Apply keyword filter
     if keyword:
         kw = keyword.lower()
+
         def _match(p):
             hs = [
                 str(p.get("location", "")).lower(),
@@ -714,6 +855,7 @@ def build_enriched_listings(city, state, listing_type, property_type,
                 str(p.get("neighborhood", "")).lower(),
             ] + [str(a).lower() for a in p.get("nearby_amenities", [])]
             return any(kw in h for h in hs)
+
         enriched = [p for p in enriched if _match(p)]
 
     return enriched
@@ -726,7 +868,7 @@ def ai_listing_agent_view(request):
             'error': 'Sign in to unlock AI-curated listings based on your search history.',
             'summary': '', 'advice': '', 'picks': [],
         })
- 
+
     city = request.GET.get('city', '').strip().title()
     state = request.GET.get('state', '').strip().upper()
     listing_type = request.GET.get('intent', '').strip()
@@ -734,19 +876,19 @@ def ai_listing_agent_view(request):
     price_range = request.GET.get('budget', '').strip()
     amenity_filter = request.GET.get('amenity', '').strip()
     keyword = request.GET.get('keyword', '').strip()
- 
+
     if not (city and state):
         return JsonResponse({
             'ok': False,
             'error': 'Please run a property search first.',
             'summary': '', 'advice': '', 'picks': [],
         })
- 
+
     enriched = build_enriched_listings(
         city, state, listing_type, property_type,
         price_range, amenity_filter, keyword,
     )
- 
+
     preferences = {
         "city": city, "state": state,
         "listing_type": listing_type, "property_type": property_type,
@@ -754,9 +896,9 @@ def ai_listing_agent_view(request):
         "keyword": keyword,
     }
     history = _recent_history_for(request, limit=5)
- 
+
     result = get_ai_recommendations(preferences, enriched, history=history)
- 
+
     picks_out = [
         {
             "address": p["listing"].get("location", ""),
@@ -773,6 +915,7 @@ def ai_listing_agent_view(request):
         }
         for p in result["picks"]
     ]
+
     return JsonResponse({
         "ok": result["ok"],
         "summary": result["summary"],
