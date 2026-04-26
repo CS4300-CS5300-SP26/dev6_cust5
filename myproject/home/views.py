@@ -286,7 +286,7 @@ def agent_ad_deactivate(request, ad_id):
 
 
 def agent_profile(request, ad_id):
-    ad = get_object_or_404(AgentAd, id=ad_id, active=True)
+    ad = get_object_or_404(AgentAd, pk=ad_id, active=True)
 
     if not ad.is_complete:
         return render(request, 'agent_ads/not_found.html', status=404)

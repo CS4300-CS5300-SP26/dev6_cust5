@@ -90,6 +90,7 @@ class AgentInquiry(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        verbose_name_plural = 'Agent inquiries'    
 
     def __str__(self):
         return f"Inquiry from {self.name} about {self.ad.headline}"
