@@ -66,6 +66,31 @@
     </div>
 </section>
 
+
+
+{% if agent_ads %}
+<section style="margin: 20px; padding: 20px; border: 1px solid #ddd; border-radius: 12px; background: #fff;">
+  <h2>Connect with a local real estate agent</h2>
+
+  <div style="display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+    {% for ad in agent_ads %}
+      <article style="border: 1px solid #e5e5e5; border-radius: 10px; padding: 16px;">
+        <h3>{{ ad.headline }}</h3>
+        <p><strong>{{ ad.agent.get_full_name|default:ad.agent.username }}</strong></p>
+        <p>{{ ad.brokerage }} · {{ ad.city }}, {{ ad.state }}</p>
+
+        {% if ad.specialties %}
+          <p>{{ ad.specialties }}</p>
+        {% endif %}
+
+        <a href="{% url 'agent_profile' ad.id %}">View profile and contact</a>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %} 
+
+
 <!-- MAP -->
 <div id="map" style="height: 500px; margin: 20px;"></div>
 
