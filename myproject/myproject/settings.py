@@ -10,8 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "test-secret-key")
-#SECRET_KEY='***REMOVED-DJANGO-SECRET-KEY***'
-#DJANGO_SECRET_KEY='***REMOVED-DJANGO-SECRET-KEY***'
+
 #DEBUG = "TRUE"
 #DEBUG = os.environ.get("DEBUG", "False") == "True"
 DEBUG = False
