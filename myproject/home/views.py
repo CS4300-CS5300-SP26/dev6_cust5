@@ -411,6 +411,7 @@ def map_view(request):
     price_range = ''
     sort_by = ''
     amenity_filter = ''
+    keyword = ''
 
     # Read params from POST (search bar)
     if request.method == 'POST':
@@ -421,6 +422,7 @@ def map_view(request):
         price_range = request.POST.get('budget', '').strip()
         sort_by = request.POST.get('sort', '').strip()
         amenity_filter = request.POST.get('amenity', '').strip()
+        keyword = request.POST.get("keyword", "").strip()
         print("FROM POST:", city, state)
 
     # Read params from GET (redirect from landing page)
@@ -432,6 +434,7 @@ def map_view(request):
         price_range = request.GET.get('budget', '').strip()
         sort_by = request.GET.get('sort', '').strip()
         amenity_filter = request.GET.get('amenity', '').strip()
+        keyword = request.GET.get("keyword", "").strip()
         print("FROM GET:", city, state)
 
     # If input was given
@@ -546,6 +549,7 @@ def map_view(request):
         'price_range': price_range,
         'sort_by': sort_by,
         'amenity_filter': amenity_filter,
+        'keyword': keyword,
         'recommended_properties': recommended_properties,
         'agent_message': agent_message,
         'buyer_readiness_message': buyer_readiness_message,
