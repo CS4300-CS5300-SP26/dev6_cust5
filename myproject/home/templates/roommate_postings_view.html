@@ -1,37 +1,10 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roommate Postings — BearEstate</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/css/uikit.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit-icons.min.js"></script>
 
+{% block title %}Roommate Posts List — BearEstate{% endblock %}
+
+{% block extra_css %}
     <style>
-        /* ── Banner ─────────────────────────────────────────────────── */
-        .top-banner {
-            position: fixed;
-            top: 0; width: 100%; height: 60px;
-            background-color: var(--blue) !important;
-            z-index: 1002;
-            display: flex; align-items: center;
-            justify-content: space-between;
-            padding: 0 2rem;
-        }
-        .top-banner h1 { color: white !important; }
-
-        .nav-right { display: flex; align-items: center; gap: 0.85rem; }
-        .nav-bear {
-            height: 36px; width: 36px;
-            object-fit: cover; border-radius: 50%;
-            display: block;
-            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15));
-        }
-
         /* ── Hero search bar ─────────────────────────────────────────── */
         .hero {
             position: relative; overflow: hidden;
@@ -261,37 +234,9 @@
             .card-expand-photo { height: 200px; }
         }
     </style>
-</head>
-<body>
+{% endblock %}
 
-    <!-- ── Top Banner ────────────────────────────────────────────────── -->
-    <div class="top-banner">
-        <a href="/" style="text-decoration:none;"><h1>BearEstate</h1></a>
-        <div class="nav-right">
-            <img
-                src="{% static 'images/bear.png' %}"
-                alt="BearEstate polar bear mascot"
-                class="nav-bear"
-                data-darkreader-ignore
-            >
-            <div class="nav-buttons">
-                {% if request.user.is_authenticated %}
-                    <span class="btn-login">Hi, {{ request.user.username }}</span>
-                    <a href="/roommate-posts/create/" class="btn-login">+ Post</a>
-                    <form method="post" action="/logout/" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-login" style="background:none;border:none;cursor:pointer;">Log Out</button>
-                    </form>
-                {% else %}
-                    <a href="/" class="btn-login">Log In</a>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Triangle (grows on scroll) -->
-    <div id="triangle" class="triangle"></div>
-
+{% block content %}
     <!-- ── Hero Section with Search Bar ─────────────────────────────── -->
     <section class="hero hero-bg">
         <img
@@ -411,17 +356,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Triangle Scroll Script -->
-    <script>
-        window.addEventListener("scroll", function() {
-            let scrollY = window.scrollY;
-            let triangle = document.getElementById("triangle");
-            let newSize = 350 + scrollY * 0.6;
-            triangle.style.borderLeft = newSize + "px solid #1a7a8a";
-            triangle.style.borderBottom = "60px solid transparent";
-        });
-    </script>
 
     <!-- Rent/Buy Budget Swap Script -->
     <script>
@@ -552,6 +486,4 @@
             document.getElementById('arrowRight').addEventListener('click', () => track.scrollBy({ left:  (track.clientWidth / 3 + 16), behavior: 'smooth' }));
         }
     </script>
-
-</body>
-</html>
+{% endblock %}
