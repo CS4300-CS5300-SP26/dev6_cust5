@@ -1,15 +1,10 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Create Posting — BearEstate</title>
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-</head>
-<body>
-    <div class="top-banner">
-        <a href="/" style="text-decoration:none;"><h1>BearEstate</h1></a>
-    </div>
+
+{% block title %}Create Roommate Post — BearEstate{% endblock %}
+
+{% block content %}
+    <br></br>
 
     <section style="max-width:500px; margin:2rem auto; padding:0 1rem;">
         <h2>Create a Roommate Post</h2>
@@ -28,5 +23,4 @@
             <a href="/roommate-posts/" style="margin-left:1rem;">Cancel</a>
         </form>
     </section>
-</body>
-</html>
+{% endblock %}

@@ -347,9 +347,13 @@ def roommate_list(request):
 
 
 # Creates a roommate post
-# Requires user to be logged in
-@login_required
+# Checks if user is logged in
+# Redirects back to home page with a msg if not logged in
 def roommate_create(request):
+    if not request.user.is_authenticated:
+        messages.warning(request, "Please log in.")
+        return redirect('bear_estate_homepage')  # replace 'home' with your home URL name
+
     if request.method == 'POST':
         form = RoommatePostForm(request.POST)
         if form.is_valid():
