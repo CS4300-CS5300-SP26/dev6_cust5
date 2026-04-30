@@ -1,25 +1,9 @@
+{% extends "base.html" %}
 {% load static %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BearEstate</title>
+{% block title %}Home — BearEstate{% endblock %}
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-
-    <!-- UIkit CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/css/uikit.min.css" rel="stylesheet">
-
-    <!-- BearEstate Styles -->
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-
-    <!-- UIkit JS -->
-    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.0/dist/js/uikit-icons.min.js"></script>
-
+{% block extra_css %}
     <style>
         /* ── Live Feed Section ──────────────────────────────────────────── */
         .live-feed-section {
@@ -296,39 +280,19 @@
             border-bottom: 1px solid var(--teal-dark);
         }
     </style>
-</head>
+{% endblock %}
 
-<body>
-
-    <!-- Banner with Login/Signup in upper right -->
-    <div class="top-banner">
-        <h1>BearEstate</h1>
-
-        <div class="nav-right">
-            <img
-                src="{% static 'images/bear.png' %}"
-                alt="BearEstate polar bear mascot"
-                class="nav-bear"
-                data-darkreader-ignore
-            >
-            <div class="nav-buttons">
-                {% if request.user.is_authenticated %}
-                  <span class="btn-login">Hi, {{ request.user.username }}</span>
-                  <a href="/chat/inbox/" class="btn-login">My Chats</a>
-                  <form method="post" action="/logout/" style="display:inline;">
-                      {% csrf_token %}
-                      <button type="submit" class="btn-login" style="background:none; border:none; cursor:pointer;">Log Out</button>
-                  </form>
-                {% else %}
-                  <a href="#" class="btn-login" id="loginBtn">Log In</a>
-                  <a href="#" class="btn-signup" id="signupBtn">Sign Up</a>
-                {% endif %}
-            </div>
+{% block content %}
+    <!-- Flash Messages -->
+    {% if messages %}
+        <div data-flash style="position:fixed; top:1rem; left:50%; transform:translateX(-50%); z-index:9999; display:flex; flex-direction:column; gap:8px; align-items:center;">
+            {% for message in messages %}
+                <div style="background:#fff3cd; color:#856404; border:1px solid #ffc107; padding:0.75rem 1.5rem; border-radius:10px; font-size:0.9rem; box-shadow:0 4px 14px rgba(0,0,0,0.1);">
+                    {{ message }}
+                </div>
+            {% endfor %}
         </div>
-    </div>
-
-    <!-- Triangle (below banner, grows horizontally on scroll) -->
-    <div id="triangle" class="triangle"></div>
+    {% endif %}
 
     <!-- Hero Section -->
     <section class="hero hero-bg">
@@ -437,17 +401,17 @@
     <!-- Student Features -->
     <section class="student-features">
         <div class="feature">
+            <h3>Message Instantly</h3>
+            <p>Talk directly with homeowners and other students — no middlemen.</p>
+        </div>
+
+        <div class="feature">
             <h3>Post Your Place</h3>
             <p>Subleasing? Looking for roommates? List it in minutes.</p>
             <a href="/roommate-posts/create/" style="display:inline-block; margin-top:0.75rem; color:var(--teal-dark); border:1.5px solid var(--teal-dark); padding:0.4rem 1rem; border-radius:20px; font-size:0.85rem; text-decoration:none;">Post a Listing →</a>
             <a href="/roommate-posts/" style="display:inline-block; margin-top:0.75rem; color:var(--teal-dark); border:1.5px solid var(--teal-dark); padding:0.4rem 1rem; border-radius:20px; font-size:0.85rem; text-decoration:none;">Browse Roommates →</a>
-            <a href="/roommate-posts/search/" style="display:inline-block; margin-top:0.75rem; color:var(--teal-dark); border:1.5px solid var(--teal-dark); padding:0.4rem 1rem; border-radius:20px; font-size:0.85rem; text-decoration:none;">Browse Stock Roommates →</a>
-            <a href="/roommate-posts/" style="display:inline-block; margin-top:0.75rem; color:var(--teal-dark); border:1.5px solid var(--teal-dark); padding:0.4rem 1rem; border-radius:20px; font-size:0.85rem; text-decoration:none;">Browse & Chat →</a>
         </div>
-        <div class="feature">
-            <h3>Message Instantly</h3>
-            <p>Talk directly with homeowners and other students — no middlemen.</p>
-        </div>
+
         <div class="feature">
             <h3>Student Focused</h3>
             <p>Designed for students, open to all.</p>
@@ -482,62 +446,6 @@
 
         <a href="/roommate-posts/" class="feed-more-link">View all listings →</a>
 
-    </section>
-
-    <!-- Property Results -->
-    <section class="property-results">
-        <h2>Search Results</h2>
-        <p>
-            <strong>{{ result_count }}</strong>
-            {% if result_count == 1 %}property{% else %}properties{% endif %} found
-        </p>
-
-        <div class="property-grid">
-            {% for property in properties %}
-            <div class="property-card">
-                <div class="property-photo">
-                    {% if property.image %}
-                        <img src="{{ property.image.url }}" alt="{{ property.address }}">
-                    {% else %}
-                        <div style="display:flex; align-items:center; justify-content:center; height:100%; font-size:2rem;">🏠</div>
-                    {% endif %}
-                </div>
-                <div class="property-info">
-                    <div class="property-address">{{ property.address }}</div>
-                    <div class="property-details">
-                        {{ property.bedrooms }}bd · {{ property.bathrooms }}ba
-                        {% if property.sq_ft %} · {{ property.sq_ft }} sqft{% endif %}
-                    </div>
-                {% endfor %}
-            </div>
-
-        {% if api_properties %}
-            <h2>Additional Listings</h2>
-
-            <div class="property-grid">
-                {% for property in api_properties %}
-                    <div class="property-card">
-                        <h3>{{ property.formattedAddress }}</h3>
-                        <p><strong>City:</strong> {{ property.city }}</p>
-                        <p><strong>Type:</strong> {{ property.propertyType }}</p>
-                        <p><strong>Rent:</strong> ${{ property.price }}/mo</p> 
-                        <p><strong>Bedrooms:</strong> {{ property.bedrooms }}</p>
-                        <p><strong>Bathrooms:</strong> {{ property.bathrooms }}</p>
-                        <p><strong>Size:</strong> {{ property.squareFootage }} sqft</p>
-                        <!--<p><strong>Year Built:</strong> {{ property.yearBuilt }}</p>-->
-
-                        #Open a new chat
-                        <button class="btn-login" onclick="window.open('/chat/{{ property.id }}/{{ request.user.id }}/', 'chat', 'width=420,height=600')">
-                            Chat →
-                        </button>
-                    </div>
-                </div>
-            </div>
-            {% empty %}
-            <p class="feed-empty">No properties match your search. Try adjusting your filters.</p>
-            {% endfor %}
-        {% endif %}
-        </div>
     </section>
 
     <!-- Login / Signup Modal (unchanged) -->
@@ -848,6 +756,4 @@
         connect();
     })();
     </script>
-
-</body>
-</html>
+{% endblock %}
