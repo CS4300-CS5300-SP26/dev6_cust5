@@ -1,14 +1,14 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Map</title>
+
+{% block title %}Map - BearEstate{% endblock %}
+
+{% block extra_css %}
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-
     <style>
+        /* Hide the triangle */
+        #triangle { display: none !important; }
+
         * {
             margin: 0;
             padding: 0;
@@ -21,29 +21,16 @@
             height: 100vh;
         }
 
-        nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-            height: 60px;
-            border-bottom: 1px solid #ccc;
-        }
-
-        nav .site-name {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-
-        nav .user-icon {
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
-
         .content {
             display: flex;
             flex: 1;
             overflow: hidden;
+            min-height: 0;
+            position: fixed;
+            top: 60px;
+            bottom: 0;
+            left: 0;
+            right: 0;
         }
 
         .sidebar {
@@ -315,59 +302,22 @@
             cursor: not-allowed;
         }
     </style>
-</head>
-<body>
+{% endblock %}
 
-    <div class="top-banner">
-        <a href="{% url 'bear_estate_homepage' %}" style="text-decoration: none; color: white; font-size: 2rem; font-weight: bold; font-family: 'Playfair Display', serif; letter-spacing: 0.1em;">BearEstate</a>
-
-        <div class="nav-right">
-            <img
-                src="{% static 'images/bear.png' %}"
-                alt="BearEstate polar bear mascot"
-                class="nav-bear"
-                data-darkreader-ignore
-            >
-            <div class="nav-buttons">
-                {% if request.user.is_authenticated %}
-                    <span class="btn-login">Hi, {{ request.user.username }}</span>
-                    <form method="post" action="/logout/" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-login" style="background:none; border:none; cursor:pointer;">Log Out</button>
-                    </form>
-                {% else %}
-                    <a href="{% url 'bear_estate_homepage' %}" class="btn-login" id="loginBtn">Log In</a>
-                {% endif %}
-                <a href="{% url 'bear_estate_homepage' %}" class="btn-signup" id="signupBtn">Sign Up</a>
-            </div>
-        </div>
-    </div>
-
-    <nav>
-        <span class="site-name">BearEstate</span>
-        <span class="user-icon">&#9398;</span>
-    </nav>
-
+{% block content %}
     <div class="content">
-
         <div class="sidebar">
             {% if request.method == "POST" or request.method == "GET" %}
                 <div style="margin-top: 10px; font-size: 14px; color: #555;">
                     {{ properties_count }} propert{{ properties_count|pluralize:"y,ies" }} found
                 </div>
             {% endif %}
-            <br>
 
             <h3>Filters</h3>
             <form method="POST">
                 {% csrf_token %}
 
                 <input type="text" name="city" placeholder="Enter a city..." value="{{ city|default:'' }}">
-
-                <label style="font-size: 13px; font-weight: 500;">Keyword</label>
-                <input type="text" name="keyword"
-                       placeholder="e.g. furnished, near campus, gym"
-                       value="{{ keyword|default:'' }}">
 
                 <select name="state">
                     <option value="AL" {% if state == "AL" %}selected{% endif %}>Alabama</option>
@@ -422,15 +372,15 @@
                     <option value="WY" {% if state == "WY" %}selected{% endif %}>Wyoming</option>
                 </select>
 
-                <label style="font-size: 13px; font-weight: 500;">Listing Type</label>
-                <select name="intent">
+                <label for="rent-sale" style="font-size: 13px; font-weight: 500;">Listing Type</label>
+                <select name="intent" id="rent-sale">
                     <option value="" {% if not listing_type %}selected{% endif %}>Any</option>
                     <option value="for_rent" {% if listing_type == "for_rent" %}selected{% endif %}>Rent</option>
                     <option value="for_sale" {% if listing_type == "for_sale" %}selected{% endif %}>Buy</option>
                 </select>
 
-                <label style="font-size: 13px; font-weight: 500;">Property Type</label>
-                <select name="type">
+                <label for="house-type" style="font-size: 13px; font-weight: 500;">Property Type</label>
+                <select name="type" id="house-type">
                     <option value="" {% if not property_type %}selected{% endif %}>Any</option>
                     <option value="House" {% if property_type == "House" %}selected{% endif %}>House</option>
                     <option value="Apartment" {% if property_type == "Apartment" %}selected{% endif %}>Apartment</option>
@@ -438,8 +388,8 @@
                     <option value="Townhouse" {% if property_type == "Townhouse" %}selected{% endif %}>Townhouse</option>
                 </select>
 
-                <label style="font-size: 13px; font-weight: 500;">Budget</label>
-                <select id="searchBudget" name="budget">
+                <label for="search-budget" style="font-size: 13px; font-weight: 500;">Budget</label>
+                <select name="budget" id="searchBudget" >
                     <option value="any" {% if price_range == "any" or not price_range %}selected{% endif %}>Any Rent</option>
                     <option value="0-900" {% if price_range == "0-900" %}selected{% endif %}>Under $900</option>
                     <option value="900-1400" {% if price_range == "900-1400" %}selected{% endif %}>$900 – $1,400</option>
@@ -447,7 +397,7 @@
                     <option value="2000-999999" {% if price_range == "2000-999999" %}selected{% endif %}>$2,000+</option>
                 </select>
 
-                <label style="font-size: 13px; font-weight: 500;">Sort By</label>
+                <label for="sort" style="font-size: 13px; font-weight: 500;">Sort By</label>
                 <select name="sort" id="sort">
                     <option value="" {% if not sort_by %}selected{% endif %}>Sort by...</option>
                     <option value="rent_asc" {% if sort_by == "rent_asc" %}selected{% endif %}>Rent: Low to High</option>
@@ -456,7 +406,7 @@
                     <option value="total_cost_desc" {% if sort_by == "total_cost_desc" %}selected{% endif %}>Total Cost: High to Low</option>
                 </select>
 
-                <label style="font-size: 13px; font-weight: 500;">Amenity</label>
+                <label for="amenity" style="font-size: 13px; font-weight: 500;">Amenity</label>
                 <select name="amenity" id="amenity">
                     <option value="any" {% if amenity_filter == "any" or not amenity_filter %}selected{% endif %}>Any amenity</option>
                     <option value="Grocery" {% if amenity_filter == "Grocery" %}selected{% endif %}>Grocery</option>
@@ -466,296 +416,295 @@
                     <option value="Coffee" {% if amenity_filter == "Coffee" %}selected{% endif %}>Coffee</option>
                 </select>
 
+                <label for="keyword" style="font-size: 13px; font-weight: 500;">Keyword</label>
+                <input type="text" name="keyword"
+                       placeholder="e.g. furnished, near campus, gym"
+                       value="{{ keyword|default:'' }}">
+
                 <button type="submit">Search</button>
             </form>
 
             {% if agent_ads %}
-                <div class="agent-ad-box" style="border: 2px solid #1d6f8f; border-radius: 8px; padding: 14px; margin: 16px 0; background: white;">
-                    <h3 style="margin-top: 0;">Local Agent Spotlight</h3>
-
-                    {% for ad in agent_ads %}
-                        <div style="margin-bottom: 12px;">
-                            <strong>{{ ad.headline }}</strong>
-                            <p style="margin: 6px 0;">{{ ad.brokerage }}</p>
-                            <p style="margin: 6px 0;">{{ ad.city }}, {{ ad.state }}</p>
-
-                            {% if ad.specialties %}
-                                <p style="margin: 6px 0;">{{ ad.specialties }}</p>
-                            {% endif %}
-
-                            <a href="/roommate-posts/agents/{{ ad.id }}/">
-                                View profile and contact
-                            </a>
-                        </div>
-                    {% endfor %}
+            <div class="agent-ad-box" style="border: 2px solid #1d6f8f; border-radius: 8px; padding: 14px; margin: 16px 0; background: white;">
+                <h3 style="margin-top: 0;">Local Agent Spotlight</h3>
+                {% for ad in agent_ads %}
+                <div style="margin-bottom: 12px;">
+                    <strong>{{ ad.headline }}</strong>
+                    <p style="margin: 6px 0;">{{ ad.brokerage }}</p>
+                    <p style="margin: 6px 0;">{{ ad.city }}, {{ ad.state }}</p>
+                    {% if ad.specialties %}
+                        <p style="margin: 6px 0;">{{ ad.specialties }}</p>
+                        <a href="/roommate-posts/agents/{{ ad.id }}/">
+                            View profile and contact
+                        </a>
+                    {% endif %}
                 </div>
+                {% endfor %}
+            </div>
             {% endif %}
 
             {# ---------- AI Listing Agent ---------- #}
-            {% if city and state %}
-                {% if request.user.is_authenticated %}
-                    <div class="ai-box" id="aiBox">
-                        <h4>AI Listing Agent</h4>
-                        <div id="aiLoading" class="ai-loading">
-                            Curating recommendations based on your filters and search history…
-                        </div>
-                        <div id="aiContent" style="display:none;">
-                            <p id="aiSummary" class="ai-summary"></p>
-                            <div id="aiPicks"></div>
-                            <div id="aiAdvice" class="ai-advice" style="display:none;"></div>
-                        </div>
-                        <div id="aiError" class="ai-error" style="display:none;"></div>
-                    </div>
+            {% if request.user.is_authenticated %}
+            <div class="ai-box" id="aiBox">
+                <h4>AI Listing Agent</h4>
+                <div id="aiLoading" class="ai-loading">
+                    Curating recommendations based on your filters and search history…
+                </div>
+                <div id="aiContent" style="display:none;">
+                    <p id="aiSummary" class="ai-summary"></p>
+                    <div id="aiPicks"></div>
+                    <div id="aiAdvice" class="ai-advice" style="display:none;"></div>
+                </div>
+                <div id="aiError" class="ai-error" style="display:none;"></div>
+            </div>
 
-                    <script>
-                        (function () {
-                            const box = document.getElementById("aiBox");
-                            const loading = document.getElementById("aiLoading");
-                            const content = document.getElementById("aiContent");
-                            const errorEl = document.getElementById("aiError");
-                            const summaryEl = document.getElementById("aiSummary");
-                            const picksEl = document.getElementById("aiPicks");
-                            const adviceEl = document.getElementById("aiAdvice");
+            <script>
+                (function () {
+                    const box       = document.getElementById("aiBox");
+                    const loading   = document.getElementById("aiLoading");
+                    const content   = document.getElementById("aiContent");
+                    const errorEl   = document.getElementById("aiError");
+                    const summaryEl = document.getElementById("aiSummary");
+                    const picksEl   = document.getElementById("aiPicks");
+                    const adviceEl  = document.getElementById("aiAdvice");
 
-                            function escapeHtml(s) {
-                                return String(s == null ? "" : s)
-                                    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-                                    .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-                                    .replace(/'/g, "&#39;");
+                    function escapeHtml(s) {
+                        return String(s == null ? "" : s)
+                            .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                            .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+                            .replace(/'/g, "&#39;");
+                    }
+
+                    const params = new URLSearchParams({
+                        city:    "{{ city|escapejs }}",
+                        state:   "{{ state|escapejs }}",
+                        intent:  "{{ listing_type|escapejs }}",
+                        type:    "{{ property_type|escapejs }}",
+                        budget:  "{{ price_range|escapejs }}",
+                        amenity: "{{ amenity_filter|escapejs }}",
+                        keyword: "{{ keyword|escapejs }}",
+                    });
+
+                    fetch("/ai-agent/?" + params.toString(), {
+                        headers: { "Accept": "application/json" },
+                        credentials: "same-origin",
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        loading.style.display = "none";
+                        if (!data.ok) {
+                            errorEl.style.display = "block";
+                            errorEl.textContent = data.error || "AI agent unavailable.";
+                            return;
+                        }
+                        content.style.display = "block";
+                        summaryEl.textContent = data.summary || "";
+
+                        if (!data.picks || !data.picks.length) {
+                            picksEl.innerHTML =
+                              '<div class="ai-loading">' +
+                              'No curated matches, try loosening your filters. </div>';
+                        } else {
+                            picksEl.innerHTML = data.picks.map(p => `
+                                <div class="ai-pick">
+                                    <span class="score">${p.score}</span>
+                                    <div class="addr">${escapeHtml(p.address)}</div>
+                                    <div class="meta">
+                                        ${escapeHtml(p.property_type)} •
+                                        $${p.rent}/mo •
+                                        total ~$${p.total_monthly_cost}
+                                    </div>
+                                    <div class="reason">${escapeHtml(p.reasoning)}</div>
+                                    ${
+                                        p.highlights && p.highlights.length
+                                        ? '<div class="hi-list">' +
+                                            p.highlights
+                                            .map(h => `<span class="hi">${escapeHtml(h)}</span>`)
+                                            .join("") +
+                                            '</div>'
+                                        : ""
+                                    }
+                                </div>
+                            `).join("");
+                        }
+
+                        if (data.advice) {
+                            adviceEl.style.display = "block";
+                            adviceEl.textContent = data.advice;
+                        }
+                    })
+                    .catch(err => {
+                        loading.style.display = "none";
+                        errorEl.style.display = "block";
+                        errorEl.textContent = "Could not reach the AI agent.";
+                    });
+                })();
+            </script>
+
+            <div class="ai-chat" id="aiChat">
+                <div class="ai-chat-header">
+                    <span>Chat with AI agent</span>
+                    <span id="aiChatStatus" class="ai-chat-status">connecting…</span>
+                </div>
+                <div id="aiChatMessages" class="ai-chat-messages"></div>
+                <form id="aiChatForm" class="ai-chat-form" autocomplete="off">
+                    <input
+                        type="text"
+                        id="aiChatInput"
+                        class="ai-chat-input"
+                        placeholder="Ask about these listings or refine your search…"
+                        maxlength="2000"
+                        disabled
+                    >
+                    <button type="submit" id="aiChatSend" class="ai-chat-send" disabled>Send</button>
+                </form>
+            </div>
+
+            <script>
+            (function () {
+                const statusEl   = document.getElementById("aiChatStatus");
+                const messagesEl = document.getElementById("aiChatMessages");
+                const formEl     = document.getElementById("aiChatForm");
+                const inputEl    = document.getElementById("aiChatInput");
+                const sendBtn    = document.getElementById("aiChatSend");
+
+                function esc(s) {
+                    return String(s == null ? "" : s)
+                        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+                        .replace(/'/g, "&#39;");
+                }
+
+                function appendMessage(role, text, opts) {
+                    opts = opts || {};
+                    const div = document.createElement("div");
+                    div.className = "ai-chat-msg ai-chat-msg-" + role;
+                    if (opts.id) div.id = opts.id;
+                    div.textContent = text;
+                    messagesEl.appendChild(div);
+                    messagesEl.scrollTop = messagesEl.scrollHeight;
+                    return div;
+                }
+
+                function setStatus(text, cls) {
+                    statusEl.textContent = text;
+                    statusEl.className = "ai-chat-status " + (cls || "");
+                }
+
+                function enableInput(enabled) {
+                    inputEl.disabled = !enabled;
+                    sendBtn.disabled = !enabled;
+                    if (enabled) inputEl.focus();
+                }
+
+                // Build the WebSocket URL from the same filters the page was loaded with.
+                const qs = new URLSearchParams({
+                    city:    "{{ city|escapejs }}",
+                    state:   "{{ state|escapejs }}",
+                    intent:  "{{ listing_type|escapejs }}",
+                    type:    "{{ property_type|escapejs }}",
+                    budget:  "{{ price_range|escapejs }}",
+                    amenity: "{{ amenity_filter|escapejs }}",
+                    keyword: "{{ keyword|escapejs }}",
+                });
+                const proto = location.protocol === "https:" ? "wss:" : "ws:";
+                const wsUrl = proto + "//" + location.host + "/ws/ai-agent/?" + qs.toString();
+                const ws = new WebSocket(wsUrl);
+
+                let thinkingEl = null;
+
+                ws.addEventListener("open", () => setStatus("connected", "ok"));
+                ws.addEventListener("close", (e) => {
+                    setStatus(
+                        e.code === 4401 ? "sign in required"
+                        : e.code === 4400 ? "run a search first"
+                        : "disconnected",
+                        "err"
+                    );
+                    enableInput(false);
+                });
+                ws.addEventListener("error", () => setStatus("connection error", "err"));
+
+                ws.addEventListener("message", (evt) => {
+                    let data;
+                    try { data = JSON.parse(evt.data); } catch { return; }
+
+                    switch (data.type) {
+                        case "ready":
+                            if (data.greeting) appendMessage("assistant", data.greeting);
+                            enableInput(true);
+                            setStatus("ready", "ok");
+                            break;
+
+                        case "user_message":
+                            // Echo from server — already rendered locally, skip.
+                            break;
+
+                        case "thinking":
+                            thinkingEl = appendMessage("assistant", "…", { id: "aiChatThinking" });
+                            thinkingEl.classList.add("ai-chat-thinking");
+                            break;
+
+                        case "assistant_message":
+                            if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+                            appendMessage("assistant", data.text || "");
+                            enableInput(true);
+                            break;
+
+                        case "listings_updated":
+                            // Redraw map pins using the map's existing helpers
+                            // (defined in the Leaflet script block below).
+                            if (typeof clearMarkers === "function" &&
+                                typeof addMarkers === "function") {
+                                clearMarkers();
+                                addMarkers(data.listings || []);
                             }
+                            const n = (data.listings || []).length;
+                            appendMessage(
+                                "system",
+                                n === 0
+                                ? "No listings match the refined search."
+                                    : "Map updated: " + n + " listing" + (n === 1 ? "" : "s") + " now showing."
+                            );
+                            break;
 
-                            const params = new URLSearchParams({
-                                city: "{{ city|escapejs }}",
-                                state: "{{ state|escapejs }}",
-                                intent: "{{ listing_type|escapejs }}",
-                                type: "{{ property_type|escapejs }}",
-                                budget: "{{ price_range|escapejs }}",
-                                amenity: "{{ amenity_filter|escapejs }}",
-                                keyword: "{{ keyword|escapejs }}",
-                            });
+                        case "error":
+                            if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+                            appendMessage("system", "⚠ " + (data.error || "Something went wrong."));
+                            enableInput(true);
+                            break;
+                    }
+                });
 
-                            fetch("/ai-agent/?" + params.toString(), {
-                                headers: { "Accept": "application/json" },
-                                credentials: "same-origin",
-                            })
-                            .then(r => r.json())
-                            .then(data => {
-                                loading.style.display = "none";
-                                if (!data.ok) {
-                                    errorEl.style.display = "block";
-                                    errorEl.textContent = data.error || "AI agent unavailable.";
-                                    return;
-                                }
-                                content.style.display = "block";
-                                summaryEl.textContent = data.summary || "";
-
-                                if (!data.picks || !data.picks.length) {
-                                    picksEl.innerHTML =
-                                        '<div class="ai-loading">' +
-                                        'No curated matches, try loosening your filters. </div>';
-                                } else {
-                                    picksEl.innerHTML = data.picks.map(p => `
-                                        <div class="ai-pick">
-                                            <span class="score">${p.score}</span>
-                                            <div class="addr">${escapeHtml(p.address)}</div>
-                                            <div class="meta">
-                                                ${escapeHtml(p.property_type)} •
-                                                $${p.rent}/mo •
-                                                total ~$${p.total_monthly_cost}
-                                            </div>
-                                            <div class="reason">${escapeHtml(p.reasoning)}</div>
-                                            ${
-                                                p.highlights && p.highlights.length
-                                                    ? '<div class="hi-list">' +
-                                                    p.highlights
-                                                        .map(h => `<span class="hi">${escapeHtml(h)}</span>`)
-                                                        .join("") +
-                                                    '</div>'
-                                                    : ""
-                                            }
-                                        </div>
-                                    `).join("");
-                                }
-
-                                if (data.advice) {
-                                    adviceEl.style.display = "block";
-                                    adviceEl.textContent = data.advice;
-                                }
-                            })
-                            .catch(err => {
-                                loading.style.display = "none";
-                                errorEl.style.display = "block";
-                                errorEl.textContent = "Could not reach the AI agent.";
-                            });
-                        })();
-                    </script>
-
-                    <div class="ai-chat" id="aiChat">
-                        <div class="ai-chat-header">
-                            <span>Chat with AI agent</span>
-                            <span id="aiChatStatus" class="ai-chat-status">connecting…</span>
-                        </div>
-                        <div id="aiChatMessages" class="ai-chat-messages"></div>
-                        <form id="aiChatForm" class="ai-chat-form" autocomplete="off">
-                            <input
-                                type="text"
-                                id="aiChatInput"
-                                class="ai-chat-input"
-                                placeholder="Ask about these listings or refine your search…"
-                                maxlength="2000"
-                                disabled
-                            >
-                            <button type="submit" id="aiChatSend" class="ai-chat-send" disabled>Send</button>
-                        </form>
-                    </div>
-
-                    <script>
-                        (function () {
-                            const statusEl = document.getElementById("aiChatStatus");
-                            const messagesEl = document.getElementById("aiChatMessages");
-                            const formEl = document.getElementById("aiChatForm");
-                            const inputEl = document.getElementById("aiChatInput");
-                            const sendBtn = document.getElementById("aiChatSend");
-
-                            function esc(s) {
-                                return String(s == null ? "" : s)
-                                    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-                                    .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
-                                    .replace(/'/g, "&#39;");
-                            }
-
-                            function appendMessage(role, text, opts) {
-                                opts = opts || {};
-                                const div = document.createElement("div");
-                                div.className = "ai-chat-msg ai-chat-msg-" + role;
-                                if (opts.id) div.id = opts.id;
-                                div.textContent = text;
-                                messagesEl.appendChild(div);
-                                messagesEl.scrollTop = messagesEl.scrollHeight;
-                                return div;
-                            }
-
-                            function setStatus(text, cls) {
-                                statusEl.textContent = text;
-                                statusEl.className = "ai-chat-status " + (cls || "");
-                            }
-
-                            function enableInput(enabled) {
-                                inputEl.disabled = !enabled;
-                                sendBtn.disabled = !enabled;
-                                if (enabled) inputEl.focus();
-                            }
-
-                            // Build the WebSocket URL from the same filters the page was loaded with.
-                            const qs = new URLSearchParams({
-                                city: "{{ city|escapejs }}",
-                                state: "{{ state|escapejs }}",
-                                intent: "{{ listing_type|escapejs }}",
-                                type: "{{ property_type|escapejs }}",
-                                budget: "{{ price_range|escapejs }}",
-                                amenity: "{{ amenity_filter|escapejs }}",
-                                keyword: "{{ keyword|escapejs }}",
-                            });
-                            const proto = location.protocol === "https:" ? "wss:" : "ws:";
-                            const wsUrl = proto + "//" + location.host + "/ws/ai-agent/?" + qs.toString();
-                            const ws = new WebSocket(wsUrl);
-
-                            let thinkingEl = null;
-
-                            ws.addEventListener("open", () => setStatus("connected", "ok"));
-                            ws.addEventListener("close", (e) => {
-                                setStatus(
-                                    e.code === 4401 ? "sign in required"
-                                    : e.code === 4400 ? "run a search first"
-                                    : "disconnected",
-                                    "err"
-                                );
-                                enableInput(false);
-                            });
-                            ws.addEventListener("error", () => setStatus("connection error", "err"));
-
-                            ws.addEventListener("message", (evt) => {
-                                let data;
-                                try { data = JSON.parse(evt.data); } catch { return; }
-
-                                switch (data.type) {
-                                    case "ready":
-                                        if (data.greeting) appendMessage("assistant", data.greeting);
-                                        enableInput(true);
-                                        setStatus("ready", "ok");
-                                        break;
-
-                                    case "user_message":
-                                        // Echo from server — already rendered locally, skip.
-                                        break;
-
-                                    case "thinking":
-                                        thinkingEl = appendMessage("assistant", "…", { id: "aiChatThinking" });
-                                        thinkingEl.classList.add("ai-chat-thinking");
-                                        break;
-
-                                    case "assistant_message":
-                                        if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
-                                        appendMessage("assistant", data.text || "");
-                                        enableInput(true);
-                                        break;
-
-                                    case "listings_updated":
-                                        // Redraw map pins using the map's existing helpers
-                                        // (defined in the Leaflet script block below).
-                                        if (typeof clearMarkers === "function" &&
-                                            typeof addMarkers === "function") {
-                                            clearMarkers();
-                                            addMarkers(data.listings || []);
-                                        }
-                                        const n = (data.listings || []).length;
-                                        appendMessage(
-                                            "system",
-                                            n === 0
-                                                ? "No listings match the refined search."
-                                                : "Map updated: " + n + " listing" + (n === 1 ? "" : "s") + " now showing."
-                                        );
-                                        break;
-
-                                    case "error":
-                                        if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
-                                        appendMessage("system", "⚠ " + (data.error || "Something went wrong."));
-                                        enableInput(true);
-                                        break;
-                                }
-                            });
-
-                            formEl.addEventListener("submit", (e) => {
-                                e.preventDefault();
-                                const text = inputEl.value.trim();
-                                if (!text || ws.readyState !== WebSocket.OPEN) return;
-                                appendMessage("user", text);
-                                ws.send(JSON.stringify({ type: "user_message", text: text }));
-                                inputEl.value = "";
-                                enableInput(false);
-                            });
-                        })();
-                    </script>
-                {% else %}
-                    <div class="ai-box">
-                        <h4>AI Listing Agent</h4>
-                        <p class="ai-summary">
-                            Sign in to get AI-curated picks personalized to your filters and search history.
-                        </p>
-                        <a href="{% url 'bear_estate_homepage' %}"
-                           style="display:inline-block; margin-top:6px; padding:6px 12px;
-                                  background:linear-gradient(135deg,#6a11cb,#2575fc);
-                                  color:#fff; border-radius:6px; text-decoration:none;
-                                  font-size:13px;">
-                            Log in or sign up!
-                        </a>
-                    </div>
-                {% endif %}
-            {% endif %}
+                formEl.addEventListener("submit", (e) => {
+                    e.preventDefault();
+                    const text = inputEl.value.trim();
+                    if (!text || ws.readyState !== WebSocket.OPEN) return;
+                    appendMessage("user", text);
+                     ws.send(JSON.stringify({ type: "user_message", text: text }));
+                    inputEl.value = "";
+                    enableInput(false);
+                });
+            })();
+            </script>
+            {% else %}
+            <div class="ai-box">
+                 <h4>AI Listing Agent</h4>
+                <p class="ai-summary">
+                     Sign in to get AI-curated picks personalized to your filters and search history.
+                </p>
+                <a href="{% url 'bear_estate_homepage' %}"
+                    style="display:inline-block; margin-top:6px; padding:6px 12px;
+                            background:linear-gradient(135deg,#6a11cb,#2575fc);
+                            color:#fff; border-radius:6px; text-decoration:none;
+                            font-size:13px;">
+                    Log in or sign up!
+                </a>
+            </div>
+        {% endif %}
         </div>
 
         <div id="map"></div>
-
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -973,6 +922,4 @@
         clearMarkers();
         addMarkers(locations);
     </script>
-
-</body>
-</html>
+{% endblock %}
