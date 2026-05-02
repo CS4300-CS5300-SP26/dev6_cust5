@@ -1,9 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 
-from rest_framework import viewsets
+from rest_framework import viewsets, permissions
 from django.http import JsonResponse
 
 from .models import AgentAd, AgentInquiry, RoommatePost, Property, SearchHistory
@@ -544,7 +545,7 @@ def map_view(request):
         map_properties = list(all_properties.values('latitude', 'longitude', 'location'))
 
     context = {
-        'properties': json.dumps(map_properties),
+        'properties': map_properties,
         'properties_count': len(map_properties),
         'city': city,
         'state': state,
@@ -705,6 +706,14 @@ class RoommatePostViewSet(viewsets.ModelViewSet):
     """
     queryset = RoommatePost.objects.all()
     serializer_class = RoommatePostSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+
+    def perform_create(self, serializer):
+        serializer.save(
+            user=self.request.user,
+            date=timezone.localdate(),
+     )
 
 
 # Two-Factor Auth
