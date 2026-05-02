@@ -16,3 +16,10 @@ class RoommatePostSerializer(serializers.ModelSerializer):
             'message',
             'status',
         )
+
+        # Specify the fields that cannot be written to by the user, only displayed
+        read_only_fields = (
+            'user',
+            'date',
+            'status',
+        )
