@@ -309,17 +309,17 @@ class TwoFactorAuthTests(TestCase):
 
 # ----------------------------- SPRINT 3 ---------------------------------#
 class MapPriceFilter(TestCase):
-    '''
+    """
     Tests the integration of the price filter on the map
-    '''
+    """
     
     @patch ('home.views.get_properties', return_value=MOCK_API_PROPERTIES)
     def test_price_filter_applies_correctly_and_returns_correct_markers(self, mock_properties):
-        '''
+        """
         Parameters: self
         Applies a price filter to the map (Utilizes the MOCK_API_PROPERTIES initialized above)
         Asserts if the page returns 200
-        '''
+        """
         # Simulates possible input from user
         response = self.client.get('/map/', {'price_filter': 'Total Cost: Low to High'})
         
@@ -329,10 +329,10 @@ class MapPriceFilter(TestCase):
 
 class RealTimePosts(TestCase):
     def tests_for_real_time_posts_fetch(self):
-        '''
+        """
         Checks that the posts will load on the page
         Checks response from HTML file
-        '''
+        """
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'feedList')
@@ -416,3 +416,44 @@ class AIListingAgentPageTests(TestCase):
         body = response.json()
         self.assertTrue(body['ok'])
         self.assertEqual(len(body['picks']), 1)
+
+
+# ----------------------------- SPRINT 4 ---------------------------------#
+class AgentAds(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="agent", password="test")
+        
+        # Creates an agent profile for the user
+        self.profile = self.user.profile
+        self.profile.is_agent_verified = True       # verifies user as agent
+        self.profile.save()
+        
+    def test_agent_ads_verified_user(self):
+        """
+        When user is verified agent, agent ads list page loads
+        """
+        self.client.login(username="agent", password="test")   # logs in to verified user
+        response = self.client.get('/agents/ads/')             # agent ad list URL
+        self.assertEqual(response.status_code, 200)            # verified agent can view
+        
+    def test_agent_ads_unverified_user(self):
+        """
+        When user is not agent but still logged in, denies access
+        """
+        self.profile.is_agent_verified = False                 # makes user unverified agent
+        self.profile.save()
+        
+        self.client.login(username="agent", password="test")   # logs in
+        
+        response = self.client.get('/agents/ads/')             # agent ad list URL
+        self.assertEqual(response.status_code, 403)            # forbidden user
+    
+    def test_agent_ads_not_logged_in(self):
+        """
+        When not authenticated (no log in), redirects to homepage
+        """
+        response = self.client.get('/agents/ads/')             # agent ad list URL
+        self.assertEqual(response.status_code, 302)     
+        self.assertIn("/", response.url)                        # redirected to homepage
+        
+        

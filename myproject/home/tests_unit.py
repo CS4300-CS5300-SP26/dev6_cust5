@@ -1,7 +1,7 @@
 from django.test import TestCase, override_settings
 from django.contrib.auth.models import User
 from unittest.mock import patch, MagicMock, AsyncMock
-from home.models import RoommatePost, Property
+from home.models import RoommatePost, Property, UserProfile, AgentAd
 from home.forms import RoommatePostForm, CustomRegisterForm
 from datetime import date
 from socialPosts.serializers import serialize_listing 
@@ -632,17 +632,17 @@ class ChatConsumerTest(TestCase):
 # ----------------------------- SPRINT 3 ---------------------------------#
 # TESTS IF A MODEL HAS CERTAIN FIELDS, ETC.
 class MapPriceFilter(TestCase):
-    '''
+    """
     Tests the integration of the price filter on the map
-    '''
+    """
     @patch('home.views.get_neighborhood_profile')
     @patch('home.views.fetch_filtered_properties')
     def test_price_filter_returns_utilities_price_field(self, mock_api, mock_neighborhood):
-        '''
+        """
         Parameters: self, intercepts RentCast API (to avoid unnecessary calls)
         Creates a mock map_property using mock neighborhood profile data
         Asserts that the field has been populated/exists
-        '''
+        """
         # Mock data for the API response
         mock_api.return_value = [
             {'id': '1', 'price': 1500, 'latitude': 40.01, 'longitude': -105.27, 'formattedAddress': '123 Main St'},
@@ -673,16 +673,16 @@ class MapPriceFilter(TestCase):
 
 class RealTimePostBroadcasts(TestCase):
     def setUp(self):
-        '''
+        """
         Creates a user for the tests
-        '''
+        """
         self.user = User.objects.create_user(username='testuser', password='pass')
         
     @override_settings(TESTING=True)
     def test_signal_skips_broadcast_during_testing(self):
-        '''
+        """
         Creates a roommate post and checks that the message is saved correctly
-        '''
+        """
         post = RoommatePost.objects.create(
             user=self.user,
             message='Test post',
@@ -692,9 +692,9 @@ class RealTimePostBroadcasts(TestCase):
 
     @override_settings(TESTING=True)
     def test_signal_skips_update(self):
-        '''
+        """
         Creates a roommate post, updates the message, and checks that the update is saved correctly
-        '''
+        """
         post = RoommatePost.objects.create(
             user=self.user,
             message='Original',
@@ -706,9 +706,9 @@ class RealTimePostBroadcasts(TestCase):
 
     @override_settings(TESTING=True)
     def test_serializer_handles_string_date(self):
-        '''
+        """
         Create a roommate post and checks that the serializer correctly formats the date
-        '''
+        """
         post = RoommatePost.objects.create(
             user=self.user,
             message='Hello',
@@ -721,10 +721,9 @@ class RealTimePostBroadcasts(TestCase):
     @override_settings(TESTING=False)  # Ensure the TESTING bypass is off
     @patch('socialPosts.signals.get_channel_layer')
     def test_new_post_broadcasts_to_feed(self, mock_get_channel_layer):
-        '''
+        """
         Tests that creation of a new roommate posts gets broadcasted
-        '''
-        
+        """
         # Create a mock channel layer with a mock group_send
         mock_channel_layer = MagicMock()                # creates a mock channel layer (does not call redis)
         mock_channel_layer.group_send = AsyncMock()     # creates a mock group_send method for the channel layer
@@ -751,10 +750,10 @@ class RealTimePostBroadcasts(TestCase):
     @override_settings(TESTING=False)
     @patch('socialPosts.signals.get_channel_layer')
     def test_broadcast_failure_does_not_affect_post_creation(self, mock_get_channel_layer):
-        '''
+        """
         Tests for when a broadcast fails
         Post will still be created and saved, but broadcast will fail silently
-        '''
+        """
         mock_channel_layer = MagicMock()
         mock_channel_layer.group_send = AsyncMock(side_effect=Exception("Failure"))
         mock_get_channel_layer.return_value = mock_channel_layer
@@ -1193,3 +1192,32 @@ class AIListingAgentConsumerReceiveTests(TransactionTestCase):
                 await communicator.receive_json_from() 
                 await communicator.disconnect()  
         async_to_sync(body)()
+
+# ----------------------------- SPRINT 4 ---------------------------------#
+class AgentAds(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='RealAgent', password='password')
+        
+        # Creates a verified agent
+        self.profile = self.user.profile
+        self.profile.is_authenticated = True
+        self.profile.save()
+            
+    def test_agent_ad_model_fields_are_filled(self):
+        """
+        Creates a new agent ad object
+        Checks that the fields have been filled with the correct info
+        """
+        new_agent = AgentAd.objects.create(
+            agent = self.user,
+            headline="Headline",
+            city="Colorado Springs",
+            state="CO",
+            brokerage="Brokerage",
+            license_number=123456,
+        )
+        
+        self.assertEqual (new_agent.agent.username, 'RealAgent')
+        self.assertTrue(new_agent.agent.is_authenticated)
+        self.assertEqual(new_agent.headline, 'Headline')
+        self.assertEqual(new_agent.brokerage, 'Brokerage')

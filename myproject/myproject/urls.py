@@ -17,6 +17,12 @@ urlpatterns = [
     path("map/", views.map_view, name="map"),
     path("auth/2fa/setup/", views.setup_2fa, name="2fa_setup"),
     path("chat/", include("chat.urls")),
+
+    path('agents/ads/', views.agent_ad_list, name='agent_ad_list'),
+    path('agents/ads/create/', views.agent_ad_create, name='agent_ad_create'),
+    path('agents/ads/<int:ad_id>/edit/', views.agent_ad_edit, name='agent_ad_edit'),
+    path('agents/ads/<int:ad_id>/deactivate/', views.agent_ad_deactivate, name='agent_ad_deactivate'),
+    path('agents/<int:ad_id>/', views.agent_profile, name='agent_profile'),
 ]
 
 if settings.DEBUG:

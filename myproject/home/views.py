@@ -216,8 +216,15 @@ def get_relevant_agent_ads(city='', state='', limit=3):
     return complete_ads[:limit]
 
 
-@login_required
+# Checks if user is authenticated
+# Redirects to correct page
 def agent_ad_list(request):
+    # Checks if user is logged in or not
+    if not request.user.is_authenticated:
+        messages.warning(request, "Please log in.")
+        return redirect('bear_estate_homepage')     # redirects to homepage
+    
+    # Checks if user is a verified agent
     if not user_is_verified_agent(request.user):
         return render(request, 'agent_ads/not_verified.html', status=403)
 
