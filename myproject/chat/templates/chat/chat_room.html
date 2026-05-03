@@ -72,26 +72,45 @@
 
     <script>
         const postingId = {{ posting_id }};
-        const inquirerId = {{ inquirer_id }};
-        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const socket = new WebSocket(`${protocol}://${window.location.host}/ws/chat/${postingId}/${inquirerId}/`);
+        const socket = new WebSocket(`ws://${window.location.host}/ws/chat/${postingId}/`);
         const currentUser = "{{ request.user.username }}";
+
+        // Fix 3: Safely append a message bubble using DOM methods — no innerHTML
+        function appendMessage(sender, message) {
+            const log = document.getElementById('chatLog');
+            const isMe = sender === currentUser;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = `msg ${isMe ? 'user' : 'bot'}`;
+
+            const small = document.createElement('small');
+            small.style.opacity = '0.6';
+            small.style.fontSize = '0.75rem';
+            small.textContent = sender;  // safe: textContent never executes HTML
+
+            const br = document.createElement('br');
+
+            const text = document.createElement('span');
+            text.textContent = message;  // safe: textContent never executes HTML
+
+            wrapper.appendChild(small);
+            wrapper.appendChild(br);
+            wrapper.appendChild(text);
+            log.appendChild(wrapper);
+            log.scrollTop = log.scrollHeight;
+        }
 
         socket.onmessage = function(e) {
             const data = JSON.parse(e.data);
-            const log = document.getElementById('chatLog');
-            const isMe = data.sender === currentUser;
-            log.innerHTML += `
-                <div class="msg ${isMe ? 'user' : 'bot'}">
-                    <small style="opacity:0.6;font-size:0.75rem">${data.sender}</small><br>
-                    ${data.message}
-                </div>`;
-            log.scrollTop = log.scrollHeight;
+            appendMessage(data.sender, data.message);
         };
 
         socket.onclose = function() {
             const log = document.getElementById('chatLog');
-            log.innerHTML += `<div class="msg bot">Connection closed.</div>`;
+            const div = document.createElement('div');
+            div.className = 'msg bot';
+            div.textContent = 'Connection closed.';  // safe: textContent never executes HTML
+            log.appendChild(div);
         };
 
         function sendMessage() {

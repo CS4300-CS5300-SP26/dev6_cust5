@@ -1,60 +1,51 @@
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from django.contrib.auth.models import User
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import render, get_object_or_404
 from home.models import RoommatePost
 from .models import Message
 
 @login_required
-def chat_room(request, posting_id, inquirer_id):
+def chat_room(request, posting_id):
+    posting = get_object_or_404(RoommatePost, id=posting_id)
+
+    # Fix 2: Only the posting owner or an existing participant can enter
+    is_owner = request.user == posting.user
+    is_participant = Message.objects.filter(
+        posting_id=posting_id, sender=request.user
+    ).exists()
+
+    if not is_owner and not is_participant:
+        raise PermissionDenied
+
     return render(request, 'chat/chat_room.html', {
-        'posting_id': posting_id,
-        'inquirer_id': inquirer_id,
+        'posting_id': posting_id
     })
 
 @login_required
 def inbox(request):
+    # Postings the user owns (as poster)
     my_posts = RoommatePost.objects.filter(user=request.user)
+    posts_with_chats = [
+        {
+            'post': p,
+            'message_count': Message.objects.filter(posting_id=p.id).count()
+        }
+        for p in my_posts
+    ]
 
-    # For each listing, build one entry per unique inquirer who has messaged it.
-    # The poster must join the room keyed by the INQUIRER's id, not their own.
-    posts_with_chats = []
-    for p in my_posts:
-        inquirer_ids = (
-            Message.objects
-            .filter(posting_id=p.id)
-            .exclude(inquirer_id=None)
-            .order_by('inquirer_id')
-            .values_list('inquirer_id', flat=True)
-            .distinct()
-        )
-        for iid in inquirer_ids:
-            inquirer = User.objects.filter(id=iid).first()
-            last_msg = Message.objects.filter(posting_id=p.id, inquirer_id=iid).last()
-            posts_with_chats.append({
-                'post': p,
-                'inquirer_id': iid,
-                'inquirer_name': inquirer.username if inquirer else f'User {iid}',
-                'message_count': Message.objects.filter(posting_id=p.id, inquirer_id=iid).count(),
-                'last_message': last_msg,
-            })
-
-    # Conversations where the current user is the inquirer.
-    # Filter by inquirer_id=request.user.id so counts/previews are scoped correctly.
-    my_post_ids = my_posts.values_list('id', flat=True)
+    # Postings the user has participated in
     participated_ids = (
         Message.objects
-        .filter(sender=request.user, inquirer_id=request.user.id)
-        .exclude(posting_id__in=my_post_ids)
-        .order_by('posting_id')
+        .filter(sender=request.user)
+        .exclude(posting_id__in=my_posts.values_list('id', flat=True))
         .values_list('posting_id', flat=True)
         .distinct()
     )
     participated_chats = [
         {
             'posting_id': pid,
-            'inquirer_id': request.user.id,
-            'message_count': Message.objects.filter(posting_id=pid, inquirer_id=request.user.id).count(),
-            'last_message': Message.objects.filter(posting_id=pid, inquirer_id=request.user.id).last(),
+            'message_count': Message.objects.filter(posting_id=pid).count(),
+            'last_message': Message.objects.filter(posting_id=pid).last(),
         }
         for pid in participated_ids
     ]
