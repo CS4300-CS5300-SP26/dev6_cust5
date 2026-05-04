@@ -8,6 +8,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         self.posting_id = self.scope['url_route']['kwargs']['posting_id']
+        self.inquirer_id = self.scope['url_route']['kwargs']['inquirer_id']
         self.room_group = f'chat_posting_{self.posting_id}'
 
         # Fix 1: Reject unauthenticated connections
@@ -16,7 +17,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.close(code=4003)
             return
 
-        # Fix 2: Reject users who are not authorized for this room
+        # Fix 2: Reject users who are not the posting owner or the designated inquirer
         if not await self.user_can_access(user):
             await self.close(code=4003)
             return
@@ -57,17 +58,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def user_can_access(self, user):
         """
-        Allow access if the user owns the posting or has previously
-        sent a message in this room (i.e. is a legitimate participant).
+        Allow access if the user owns the posting or is the designated inquirer.
         """
         from home.models import RoommatePost
         is_owner = RoommatePost.objects.filter(
             id=self.posting_id, user=user
         ).exists()
-        is_participant = Message.objects.filter(
-            posting_id=self.posting_id, sender=user
-        ).exists()
-        return is_owner or is_participant
+        is_inquirer = user.id == int(self.inquirer_id)
+        return is_owner or is_inquirer
 
     @database_sync_to_async
     def save_message(self, user, content):

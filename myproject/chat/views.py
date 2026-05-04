@@ -5,20 +5,19 @@ from home.models import RoommatePost
 from .models import Message
 
 @login_required
-def chat_room(request, posting_id):
+def chat_room(request, posting_id, inquirer_id):
     posting = get_object_or_404(RoommatePost, id=posting_id)
 
-    # Fix 2: Only the posting owner or an existing participant can enter
+    # Fix 2: Only the posting owner or the designated inquirer can enter
     is_owner = request.user == posting.user
-    is_participant = Message.objects.filter(
-        posting_id=posting_id, sender=request.user
-    ).exists()
+    is_inquirer = request.user.id == inquirer_id
 
-    if not is_owner and not is_participant:
+    if not is_owner and not is_inquirer:
         raise PermissionDenied
 
     return render(request, 'chat/chat_room.html', {
-        'posting_id': posting_id
+        'posting_id': posting_id,
+        'inquirer_id': inquirer_id,
     })
 
 @login_required
@@ -44,6 +43,7 @@ def inbox(request):
     participated_chats = [
         {
             'posting_id': pid,
+            'inquirer_id': request.user.id,
             'message_count': Message.objects.filter(posting_id=pid).count(),
             'last_message': Message.objects.filter(posting_id=pid).last(),
         }
