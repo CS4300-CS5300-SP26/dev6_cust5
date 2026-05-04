@@ -611,20 +611,35 @@ class ChatConsumerTest(TestCase):
 
         async_to_sync(run)()
 
-    def test_anonymous_user_cannot_connect(self):
-        #Change to reject anonymous users
-        from chat.consumers import ChatConsumer
-        from chat.models import Message
+def test_anonymous_user_cannot_connect(self):
+    #Simulate a WebSocket Connection to test the authentication
+    from channels.testing import WebsocketCommunicator
+    from channels.auth import AuthMiddlewareStack
+    from channels.routing import URLRouter
+    from django.urls import re_path
+    from chat.consumers import ChatConsumer
+    from chat.models import Message
+    from asgiref.sync import async_to_sync
 
-        #Test whether or not messages exist
-        self.assertEqual(Message.objects.filter(posting_id=88).count(), 0)
+    #Runs that connection
+    application = AuthMiddlewareStack(
+        URLRouter([
+            re_path(r'ws/chat/(?P<posting_id>\d+)/(?P<inquirer_id>\d+)/$', ChatConsumer.as_asgi()),
+        ])
+    )
 
-        #Confirm these messages cannot be reached
-        consumer = ChatConsumer()
-        consumer.posting_id = 88
-        consumer.inquirer_id = 0
-        self.assertEqual(Message.objects.filter(posting_id=88).count(), 0)
+    #Tests if the user is anonymous
+    async def inner():
+        communicator = WebsocketCommunicator(application, '/ws/chat/1/1/')
+        connected, code = await communicator.connect()
 
+        self.assertFalse(connected, "Anonymous user should not be able to connect")
+        await communicator.disconnect()
+
+    async_to_sync(inner)()
+
+    #Test that no messages are saved
+    self.assertEqual(Message.objects.filter(posting_id=1).count(), 0)
 # ----------------------------- SPRINT 3 ---------------------------------#
 # TESTS IF A MODEL HAS CERTAIN FIELDS, ETC.
 class MapPriceFilter(TestCase):

@@ -9,8 +9,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         self.posting_id = self.scope['url_route']['kwargs']['posting_id']
-        self.inquirer_id = self.scope['url_route']['kwargs']['inquirer_id']
-        # Restore per-inquirer room isolation so different conversations stay private
+
+        # Fix: convert inquirer_id once at connect, catch malformed values early
+        try:
+            self.inquirer_id = int(self.scope['url_route']['kwargs']['inquirer_id'])
+        except (ValueError, TypeError):
+            await self.close(code=4003)
+            return
+
         self.room_group = f'chat_posting_{self.posting_id}_inquirer_{self.inquirer_id}'
 
         # Fix 1: Reject unauthenticated connections
@@ -39,6 +45,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
         clean_message = filter_message(raw_message)
 
         user = self.scope['user']
+
+        # Fix: defensive auth check in case connect() guard ever changes
+        if not user.is_authenticated:
+            return
+
         sender_name = user.username
 
         await self.save_message(user, clean_message)
@@ -61,11 +72,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def user_can_access(self, user):
         """
         Allow access if the user owns the posting or is the designated inquirer.
+        inquirer_id is already cast to int in connect().
         """
         is_owner = RoommatePost.objects.filter(
             id=self.posting_id, user=user
         ).exists()
-        is_inquirer = user.id == int(self.inquirer_id)
+        is_inquirer = user.id == self.inquirer_id
         return is_owner or is_inquirer
 
     @database_sync_to_async
@@ -81,9 +93,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_history(self):
-        # Filter by both posting_id and inquirer_id to prevent cross-conversation leakage
-        messages = Message.objects.filter(
-            posting_id=self.posting_id,
-            inquirer_id=self.inquirer_id
+        # Filter by both IDs, order chronologically, fetch only needed fields
+        messages = (
+            Message.objects
+            .filter(posting_id=self.posting_id, inquirer_id=self.inquirer_id)
+            .order_by('timestamp')
+            .values('content', 'sender_label')
         )
-        return [{'message': m.content, 'sender': m.sender_label} for m in messages]
+        return [{'message': m['content'], 'sender': m['sender_label']} for m in messages]
