@@ -55,6 +55,12 @@
             cursor: pointer;
         }
         .chat-input button:hover { filter: brightness(1.1); }
+
+        /* Fix: centralised sender label styling — keeps JS clean */
+        .sender-label {
+            opacity: 0.6;
+            font-size: 0.75rem;
+        }
     </style>
 </head>
 <body>
@@ -73,25 +79,54 @@
     <script>
         const postingId = {{ posting_id }};
         const inquirerId = {{ inquirer_id }};
+        const currentUser = "{{ request.user.username }}";
+
+        // Detect wss:// vs ws:// so secure pages don't break
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
         const socket = new WebSocket(`${protocol}://${window.location.host}/ws/chat/${postingId}/${inquirerId}/`);
-        const currentUser = "{{ request.user.username }}";
+
+        // Shared helper — used for both incoming messages and system notices
+        // Fix: sender label now uses CSS class instead of inline styles
+        function appendMessage(sender, message) {
+            const log = document.getElementById('chatLog');
+            const isMe = sender === currentUser;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = `msg ${isMe ? 'user' : 'bot'}`;
+
+            const small = document.createElement('small');
+            small.className = 'sender-label';   // CSS class, not inline style
+            small.textContent = sender;          // safe: textContent never executes HTML
+
+            const br = document.createElement('br');
+
+            const text = document.createElement('span');
+            text.textContent = message;          // safe: textContent never executes HTML
+
+            wrapper.appendChild(small);
+            wrapper.appendChild(br);
+            wrapper.appendChild(text);
+            log.appendChild(wrapper);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Fix: onclose reuses appendMessage helper to stay consistent
+        function appendNotice(message) {
+            const log = document.getElementById('chatLog');
+            const div = document.createElement('div');
+            div.className = 'msg bot';
+            div.textContent = message;           // safe: textContent never executes HTML
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
 
         socket.onmessage = function(e) {
             const data = JSON.parse(e.data);
-            const log = document.getElementById('chatLog');
-            const isMe = data.sender === currentUser;
-            log.innerHTML += `
-                <div class="msg ${isMe ? 'user' : 'bot'}">
-                    <small style="opacity:0.6;font-size:0.75rem">${data.sender}</small><br>
-                    ${data.message}
-                </div>`;
-            log.scrollTop = log.scrollHeight;
+            appendMessage(data.sender, data.message);
         };
 
         socket.onclose = function() {
-            const log = document.getElementById('chatLog');
-            log.innerHTML += `<div class="msg bot">Connection closed.</div>`;
+            appendNotice('Connection closed.');
         };
 
         function sendMessage() {
