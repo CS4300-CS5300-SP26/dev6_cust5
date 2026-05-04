@@ -39,6 +39,7 @@ jobs:
       - name: Run Django tests
         env:
           RENTCAST_API_KEY: dummy-test-key
+          DJANGO_SECRET_KEY: dummy-django-key
           DEBUG: "False"
         run: |
           cd myproject
