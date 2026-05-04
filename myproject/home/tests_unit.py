@@ -466,14 +466,26 @@ class TwoFAPostTest(TestCase):
         self.assertIn('email_error', response.context)
 
     def test_email_verify_correct_code_redirects(self):
-        self._set_session(email_otp='123456')
+        import time as _time
+        # The fix for the "email OTP never expires" vulnerability now
+        # requires an expiration timestamp to live alongside the code
+        # — without it, the OTP is rejected as expired. Seed a fresh
+        # one (5 min in the future) for this happy-path test.
+        self._set_session(
+            email_otp='123456',
+            email_otp_expires=int(_time.time()) + 300,
+        )
         response = self.client.post('/auth/2fa/setup/', {
             'method': 'email_verify', 'email_code': '123456',
         })
         self.assertEqual(response.status_code, 302)
 
     def test_email_verify_wrong_code_shows_error(self):
-        self._set_session(email_otp='123456')
+        import time as _time
+        self._set_session(
+            email_otp='123456',
+            email_otp_expires=int(_time.time()) + 300,
+        )
         response = self.client.post('/auth/2fa/setup/', {
             'method': 'email_verify', 'email_code': '999999',
         })

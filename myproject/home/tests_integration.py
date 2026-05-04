@@ -369,8 +369,13 @@ class TwoFAFlowTest(TestCase):
 
     def test_email_verify_correct_code_saves_profile(self):
         from home.models import UserProfile
+        import time as _time
         session = self.client.session
         session['email_otp'] = '654321'
+        # The fix requires an expiration timestamp to live alongside
+        # the code so stale codes can't be replayed forever. Seed a
+        # fresh one (expires in 5 min) for this happy-path test.
+        session['email_otp_expires'] = int(_time.time()) + 300
         session.save()
         response = self.client.post('/auth/2fa/setup/', {
             'method': 'email_verify', 'email_code': '654321',
@@ -645,4 +650,3 @@ class AIChatTurnIntegrationTest(TestCase):
  
         # OpenAI should have been called twice (tool calling + reply)
         self.assertEqual(fake_client.chat.completions.create.call_count, 2)
-  
