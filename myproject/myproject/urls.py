@@ -2,9 +2,19 @@ from django.contrib import admin
 from django.urls import path, include
 from django.http import HttpResponse
 from home import views
+from home.security import rate_limit
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
+
+
+admin.site.login = rate_limit(
+    "admin_login", limit=5, window_seconds=300
+)(admin.site.login)
+
+_logout_view = rate_limit(
+    "logout", limit=30, window_seconds=300
+)(auth_views.LogoutView.as_view(next_page="/"))
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -12,10 +22,11 @@ urlpatterns = [
     path("health/", lambda request: HttpResponse("ok")),
     path("roommate-posts/", include("home.urls")),
     path("register/", views.register, name="register"),
-    path("logout/", auth_views.LogoutView.as_view(next_page="/"), name="logout"),
+    path("logout/", _logout_view, name="logout"),
     path("ai-agent/", views.ai_listing_agent_view, name="ai_listing_agent"),
     path("map/", views.map_view, name="map"),
     path("auth/2fa/setup/", views.setup_2fa, name="2fa_setup"),
+    path("auth/2fa/verify/", views.verify_2fa_login, name="2fa_verify_login"),
     path("chat/", include("chat.urls")),
 
     path('agents/ads/', views.agent_ad_list, name='agent_ad_list'),

@@ -84,6 +84,7 @@ class AIListingAgentConsumer(AsyncWebsocketConsumer):
         await self._send({
             "type": "ready",
             "greeting": self.history[-1]["content"],
+            "notice": ai_listing_agent.LANGUAGE_NOTICE,
             "listings": self.listings,
             "filters": self.filters,
         })
@@ -110,9 +111,21 @@ class AIListingAgentConsumer(AsyncWebsocketConsumer):
         if len(user_text) > 2000:
             user_text = user_text[:2000]
 
-        # Echo back the user's message so the browser has a uniform
-        # event stream to render against.
         await self._send({"type": "user_message", "text": user_text})
+
+        # Guardrails
+        guard = ai_listing_agent.check_message_guardrails(user_text)
+        if not guard["ok"]:
+            logger.info(
+                "Chat guardrail blocked message (reason=%s, user=%s)",
+                guard.get("reason"), getattr(self.user, "username", "?"),
+            )
+            await self._send({
+                "type": "system_message",
+                "text": guard["reply"],
+                "reason": guard.get("reason", ""),
+            })
+            return
 
         self.history.append({"role": "user", "content": user_text})
         await self._send({"type": "thinking"})
@@ -125,8 +138,7 @@ class AIListingAgentConsumer(AsyncWebsocketConsumer):
             )
             return
 
-        # If refine_search ran, push new listings before the assistant
-        # reply so the map redraws just ahead of the text.
+        # If refine_search ran, push new listings before the assistant reply so the map redraws just ahead of the text.
         if result.get("refined"):
             await self._send({
                 "type": "listings_updated",

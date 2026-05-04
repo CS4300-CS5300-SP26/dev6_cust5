@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.utils import timezone
 
 from rest_framework import viewsets, permissions
@@ -12,8 +13,10 @@ from .serializers import RoommatePostSerializer
 from .forms import AgentAdForm, AgentInquiryForm, CustomRegisterForm, RoommatePostForm
 from .rentcast_api import get_properties
 from .ai_listing_agent import get_ai_recommendations
+from .security import rate_limit, EMAIL_OTP_TTL_SECONDS
 
 import json
+import time
 import requests
 import pyotp
 import qrcode, io, base64
@@ -621,6 +624,12 @@ def fetch_filtered_properties(location, listing_type=None, property_type=None, p
 # ------------------------ HOME PAGE -------------------------- #
 
 # Home page
+@rate_limit(
+    "login",
+    limit=5,                # 5 failed attempts...
+    window_seconds=300,     # ...per 5 minutes per IP
+    only_on_failure=True,   # successful logins don't burn the budget
+)
 def index(request):
     context = {}
 
@@ -632,9 +641,29 @@ def index(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
+            # Check whether this user has a second factor configured.
+            # If so, do NOT call login() yet — that would bypass 2FA.
+            # Instead, stash the user id in the session and redirect to
+            # the 2FA challenge page.
+            profile = getattr(user, 'profile', None)
+            if profile and profile.totp_enabled and profile.two_fa_method in ('totp', 'email'):
+                # Pre-auth state: user proved the password but is not
+                # yet logged in. Django's session is anonymous here.
+                request.session['pre_2fa_user_id'] = user.id
+                request.session['pre_2fa_method'] = profile.two_fa_method
+                request.session['pre_2fa_started_at'] = int(time.time())
+                # Make sure no stale email OTP is left over.
+                request.session.pop('login_email_otp', None)
+                request.session.pop('login_email_otp_expires', None)
+                return redirect('2fa_verify_login')
+
+            # No 2FA configured: log in normally.
             login(request, user)
             return redirect('bear_estate_homepage')
         else:
+            # Failed login — flag the request so the rate limiter
+            # counts this attempt.
+            request._ratelimit_failure = True
             context['login_error'] = 'Invalid username or password.'
             context['show_login_modal'] = True
 
@@ -684,7 +713,150 @@ def index(request):
     return render(request, "bear_estate_homepage.html", context)
 
 
+# ------------------------ 2FA LOGIN CHALLENGE -------------------------- #
+
+# How long the user has to complete the 2FA challenge after entering
+# their password before we discard the pre-auth state.
+_PRE_2FA_TTL_SECONDS = 10 * 60  # 10 minutes
+
+
+def _clear_pre_2fa_session(request):
+    for k in (
+        'pre_2fa_user_id',
+        'pre_2fa_method',
+        'pre_2fa_started_at',
+        'login_email_otp',
+        'login_email_otp_expires',
+    ):
+        request.session.pop(k, None)
+
+
+def _get_pre_2fa_user(request):
+    """
+    Returns the User who passed password auth but hasn't completed
+    2FA, or None if no valid pre-auth state is in the session.
+    """
+    user_id = request.session.get('pre_2fa_user_id')
+    started_at = request.session.get('pre_2fa_started_at', 0)
+    if not user_id:
+        return None
+    if int(time.time()) - int(started_at) > _PRE_2FA_TTL_SECONDS:
+        _clear_pre_2fa_session(request)
+        return None
+    try:
+        return User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        _clear_pre_2fa_session(request)
+        return None
+
+
+@rate_limit("2fa_verify", limit=10, window_seconds=300, only_on_failure=True)
+def verify_2fa_login(request):
+    """
+    Second-factor challenge page used during login.
+
+    GET  -> show the challenge form (TOTP code field, or email-code
+            field with a "send code" button depending on user method).
+    POST -> verify the supplied factor. Only on success do we call
+            login() and complete the authentication.
+    """
+    import random
+    from django.core.mail import send_mail
+
+    user = _get_pre_2fa_user(request)
+    if user is None:
+        # No valid pre-auth state — bounce back to login.
+        return redirect('bear_estate_homepage')
+
+    method = request.session.get('pre_2fa_method', 'totp')
+    profile = user.profile
+    ctx = {
+        'method': method,
+        'masked_email': _mask_email(user.email) if user.email else '',
+        'email_sent': bool(request.session.get('login_email_otp')),
+    }
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        # User asked us to (re)send the email code.
+        if action == 'email_send' and method == 'email':
+            if not user.email:
+                ctx['error'] = 'No email address on file for this account.'
+                return render(request, '2fa_verify.html', ctx)
+            code = f"{random.randint(0, 999999):06d}"
+            request.session['login_email_otp'] = code
+            request.session['login_email_otp_expires'] = int(time.time()) + EMAIL_OTP_TTL_SECONDS
+            send_mail(
+                subject='Your BearEstate sign-in code',
+                message=(
+                    f'Your one-time sign-in code is: {code}\n\n'
+                    f'It expires in {EMAIL_OTP_TTL_SECONDS // 60} minutes.'
+                ),
+                from_email='noreply@bearestate.me',
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+            ctx['email_sent'] = True
+            return render(request, '2fa_verify.html', ctx)
+
+        # Verify TOTP.
+        if method == 'totp':
+            entered = (request.POST.get('otp_code') or '').strip()
+            secret = profile.totp_secret or ''
+            if secret and pyotp.TOTP(secret).verify(entered):
+                _clear_pre_2fa_session(request)
+                login(request, user)
+                return redirect('bear_estate_homepage')
+            request._ratelimit_failure = True
+            ctx['error'] = 'Incorrect code — please try again.'
+            return render(request, '2fa_verify.html', ctx)
+
+        # Verify email code.
+        if method == 'email':
+            entered = (request.POST.get('email_code') or '').strip()
+            stored = request.session.get('login_email_otp', '')
+            expires_at = request.session.get('login_email_otp_expires', 0)
+            now = int(time.time())
+
+            if not stored:
+                request._ratelimit_failure = True
+                ctx['error'] = 'No code has been sent yet. Click "Send code".'
+                return render(request, '2fa_verify.html', ctx)
+
+            if now > int(expires_at):
+                # Expired — clear it and force resend.
+                request.session.pop('login_email_otp', None)
+                request.session.pop('login_email_otp_expires', None)
+                request._ratelimit_failure = True
+                ctx['email_sent'] = False
+                ctx['error'] = 'That code has expired. Please request a new one.'
+                return render(request, '2fa_verify.html', ctx)
+
+            if entered and entered == stored:
+                _clear_pre_2fa_session(request)
+                login(request, user)
+                return redirect('bear_estate_homepage')
+
+            request._ratelimit_failure = True
+            ctx['error'] = 'Incorrect code — please try again.'
+            return render(request, '2fa_verify.html', ctx)
+
+    return render(request, '2fa_verify.html', ctx)
+
+
+def _mask_email(email):
+    """Return a privacy-safe rendering like 'a***@example.com'."""
+    if not email or '@' not in email:
+        return ''
+    local, _, domain = email.partition('@')
+    if len(local) <= 1:
+        return f"{local}***@{domain}"
+    return f"{local[0]}***@{domain}"
+
+
 # User Register
+@rate_limit("register", limit=5, window_seconds=60 * 60)  # 5/hour per IP
 def register(request):
     if request.method == 'POST':
         form = CustomRegisterForm(request.POST)
@@ -725,6 +897,7 @@ class RoommatePostViewSet(viewsets.ModelViewSet):
 
 # Two-Factor Auth
 @login_required
+@rate_limit("2fa_setup", limit=15, window_seconds=300, only_on_failure=True)
 def setup_2fa(request):
     """
     GET -> render setup page with both TOTP and email options.
@@ -763,6 +936,7 @@ def setup_2fa(request):
                 p.two_fa_method = 'totp'
                 p.save()
                 return redirect('bear_estate_homepage')
+            request._ratelimit_failure = True
             ctx = _totp_context()
             ctx['totp_error'] = 'Incorrect code — please try again.'
             return render(request, '2fa_setup.html', ctx)
@@ -774,11 +948,17 @@ def setup_2fa(request):
                 ctx = _totp_context()
                 ctx['email_error'] = 'No email address on your account. Please update your profile first.'
                 return render(request, '2fa_setup.html', ctx)
-            code = str(random.randint(100000, 999999))
+            code = f"{random.randint(0, 999999):06d}"
+            # Store the code AND its expiration timestamp so the
+            # verify branch below can reject stale codes (5 min TTL).
             request.session['email_otp'] = code
+            request.session['email_otp_expires'] = int(time.time()) + EMAIL_OTP_TTL_SECONDS
             send_mail(
                 subject='Your BearEstate verification code',
-                message=f'Your one-time code is: {code}\n\nIt expires in 10 minutes.',
+                message=(
+                    f'Your one-time code is: {code}\n\n'
+                    f'It expires in {EMAIL_OTP_TTL_SECONDS // 60} minutes.'
+                ),
                 from_email='noreply@bearestate.me',
                 recipient_list=[email],
                 fail_silently=False,
@@ -792,13 +972,35 @@ def setup_2fa(request):
         if method == 'email_verify':
             entered = request.POST.get('email_code', '').strip()
             stored = request.session.get('email_otp', '')
-            if entered == stored and stored:
+            expires_at = request.session.get('email_otp_expires', 0)
+            now = int(time.time())
+
+            # Reject expired codes. Also reject codes that have no
+            # expiration recorded — those are either stale legacy
+            # state from before this fix, or session-tampering.
+            if not stored or not expires_at or now > int(expires_at):
+                # Drop the stale code so the next attempt has to
+                # request a fresh one.
+                request.session.pop('email_otp', None)
+                request.session.pop('email_otp_expires', None)
+                request._ratelimit_failure = True
+                ctx = _totp_context()
+                ctx['email_sent'] = False
+                ctx['email_address'] = request.user.email
+                ctx['email_error'] = 'That code has expired. Please request a new one.'
+                return render(request, '2fa_setup.html', ctx)
+
+            if entered == stored:
                 p = request.user.profile
                 p.totp_enabled = True
                 p.two_fa_method = 'email'
                 p.save()
-                del request.session['email_otp']
+                # Single-use: clear the code on success.
+                request.session.pop('email_otp', None)
+                request.session.pop('email_otp_expires', None)
                 return redirect('bear_estate_homepage')
+
+            request._ratelimit_failure = True
             ctx = _totp_context()
             ctx['email_sent'] = True
             ctx['email_address'] = request.user.email

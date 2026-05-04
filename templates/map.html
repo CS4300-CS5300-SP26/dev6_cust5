@@ -632,6 +632,7 @@
                     switch (data.type) {
                         case "ready":
                             if (data.greeting) appendMessage("assistant", data.greeting);
+                            if (data.notice)   appendMessage("system", data.notice);
                             enableInput(true);
                             setStatus("ready", "ok");
                             break;
@@ -648,6 +649,13 @@
                         case "assistant_message":
                             if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
                             appendMessage("assistant", data.text || "");
+                            enableInput(true);
+                            break;
+
+                        case "system_message":
+                            // Guardrail-blocked message etc. Calm gray, no alert icon.
+                            if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+                            appendMessage("system", data.text || "");
                             enableInput(true);
                             break;
 

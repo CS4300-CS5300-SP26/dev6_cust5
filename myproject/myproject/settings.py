@@ -7,13 +7,20 @@ load_dotenv()
 # Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# SECURITY
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "test-secret-key")
-
 #DEBUG = "TRUE"
-#DEBUG = os.environ.get("DEBUG", "False") == "True"
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
+
+# SECRET_KEY
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        from django.core.management.utils import get_random_secret_key
+        SECRET_KEY = get_random_secret_key()
+    else:
+        raise RuntimeError(
+            "DJANGO_SECRET_KEY environment variable must be set when DEBUG=False."
+        )
+
 
 ALLOWED_HOSTS = ["bearestate.me", "www.bearestate.me", "premain.bearestate.me", "127.0.0.1", "localhost", ]
 
@@ -24,6 +31,31 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+ # X-Content-Type-Options: nosniff
+SECURE_CONTENT_TYPE_NOSNIFF = True  
+SECURE_REFERRER_POLICY = "same-origin"
+# clickjacking defense
+X_FRAME_OPTIONS = "DENY"    
+
+
+# Cookie hardening that's safe to leave on everywhere:
+# Django default
+SESSION_COOKIE_HTTPONLY = True       
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+
+
+# Production-only HTTPS hardening. We only flip these on when DEBUG is False so local dev over plain HTTP keeps working.
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    # 1 year HSTS, including subdomains + preload eligibility.
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 365
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
 
 # API KEYS
@@ -159,6 +191,17 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+# Cache backend used by the rate limiter (home/security.py).
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "bearestate-default",
+    }
+}
+
+# The test flips this on
+RATE_LIMIT_DISABLED = False
 
 #When tests are run, adjust ASGI Server
 TESTING = False
