@@ -1,6 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.models import User
 from home.models import RoommatePost
 from .models import Message
 
@@ -22,15 +23,28 @@ def chat_room(request, posting_id, inquirer_id):
 
 @login_required
 def inbox(request):
-    # Postings the user owns (as poster)
+    # Postings the user owns (as poster) — one entry per inquirer per post
     my_posts = RoommatePost.objects.filter(user=request.user)
-    posts_with_chats = [
-        {
-            'post': p,
-            'message_count': Message.objects.filter(posting_id=p.id).count()
-        }
-        for p in my_posts
-    ]
+
+    posts_with_chats = []
+    for p in my_posts:
+        # Find all unique inquirers who have messaged this posting
+        inquirer_ids = (
+            Message.objects
+            .filter(posting_id=p.id)
+            .exclude(inquirer_id__isnull=True)
+            .values_list('inquirer_id', flat=True)
+            .distinct()
+        )
+        for iid in inquirer_ids:
+            inquirer = User.objects.filter(id=iid).first()
+            posts_with_chats.append({
+                'post': p,
+                'inquirer_id': iid,
+                'inquirer_name': inquirer.username if inquirer else f'User {iid}',
+                'message_count': Message.objects.filter(posting_id=p.id, inquirer_id=iid).count(),
+                'last_message': Message.objects.filter(posting_id=p.id, inquirer_id=iid).last(),
+            })
 
     # Postings the user has participated in as inquirer
     participated_ids = (

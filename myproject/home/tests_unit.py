@@ -611,23 +611,19 @@ class ChatConsumerTest(TestCase):
 
         async_to_sync(run)()
 
-    def test_anonymous_user_saved_with_none_sender(self):
-        """
-        save_message() stores None for anonymous users
-        """
+    def test_anonymous_user_cannot_connect(self):
+        #Change to reject anonymous users
         from chat.consumers import ChatConsumer
         from chat.models import Message
-        from django.contrib.auth.models import AnonymousUser
-        from asgiref.sync import async_to_sync
 
+        #Test whether or not messages exist
+        self.assertEqual(Message.objects.filter(posting_id=88).count(), 0)
+
+        #Confirm these messages cannot be reached
         consumer = ChatConsumer()
         consumer.posting_id = 88
-        consumer.inquirer_id = 0  # anonymous has no user id;
-        anon = AnonymousUser()
-        async_to_sync(consumer.save_message)(anon, 'anon message')
-        msg = Message.objects.get(posting_id=88)
-        self.assertIsNone(msg.sender)
-        self.assertEqual(msg.sender_label, 'anonymous')
+        consumer.inquirer_id = 0
+        self.assertEqual(Message.objects.filter(posting_id=88).count(), 0)
 
 # ----------------------------- SPRINT 3 ---------------------------------#
 # TESTS IF A MODEL HAS CERTAIN FIELDS, ETC.
