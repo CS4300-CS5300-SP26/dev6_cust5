@@ -1203,7 +1203,7 @@ class AIListingAgentConsumerReceiveTests(TransactionTestCase):
                 await communicator.connect()
                 await communicator.receive_json_from() 
                 await communicator.disconnect()  
-<<<<<<< HEAD
+
         async_to_sync(body)()
 
 # ----------------------------- SPRINT 4 ---------------------------------#
@@ -1234,6 +1234,3 @@ class AgentAds(TestCase):
         self.assertTrue(new_agent.agent.is_authenticated)
         self.assertEqual(new_agent.headline, 'Headline')
         self.assertEqual(new_agent.brokerage, 'Brokerage')
-=======
-        async_to_sync(body)()
->>>>>>> critical-fixes
