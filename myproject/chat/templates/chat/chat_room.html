@@ -72,7 +72,8 @@
 
     <script>
         const postingId = {{ posting_id }};
-        const socket = new WebSocket(`ws://${window.location.host}/ws/chat/${postingId}/`);
+        const inquirerId = {{ inquirer_id }};
+        const socket = new WebSocket(`ws://${window.location.host}/ws/chat/${postingId}/${inquirerId}/`);
         const currentUser = "{{ request.user.username }}";
 
         // Fix 3: Safely append a message bubble using DOM methods — no innerHTML
