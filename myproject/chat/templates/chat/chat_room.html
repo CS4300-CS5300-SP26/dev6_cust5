@@ -73,8 +73,11 @@
     <script>
         const postingId = {{ posting_id }};
         const inquirerId = {{ inquirer_id }};
-        const socket = new WebSocket(`ws://${window.location.host}/ws/chat/${postingId}/${inquirerId}/`);
         const currentUser = "{{ request.user.username }}";
+
+        // Fix 3: Detect wss:// vs ws:// so secure pages don't break
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const socket = new WebSocket(`${protocol}://${window.location.host}/ws/chat/${postingId}/${inquirerId}/`);
 
         // Fix 3: Safely append a message bubble using DOM methods — no innerHTML
         function appendMessage(sender, message) {

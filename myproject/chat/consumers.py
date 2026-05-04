@@ -1,6 +1,7 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
+from home.models import RoommatePost
 from .models import Message
 from .filters import filter_message
 
@@ -9,7 +10,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.posting_id = self.scope['url_route']['kwargs']['posting_id']
         self.inquirer_id = self.scope['url_route']['kwargs']['inquirer_id']
-        self.room_group = f'chat_posting_{self.posting_id}'
+        # Restore per-inquirer room isolation so different conversations stay private
+        self.room_group = f'chat_posting_{self.posting_id}_inquirer_{self.inquirer_id}'
 
         # Fix 1: Reject unauthenticated connections
         user = self.scope['user']
@@ -60,7 +62,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         """
         Allow access if the user owns the posting or is the designated inquirer.
         """
-        from home.models import RoommatePost
         is_owner = RoommatePost.objects.filter(
             id=self.posting_id, user=user
         ).exists()
@@ -69,8 +70,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_message(self, user, content):
+        # Record inquirer_id so conversations remain scoped per inquirer
         Message.objects.create(
             posting_id=self.posting_id,
+            inquirer_id=self.inquirer_id,
             sender=user,
             sender_label=user.username,
             content=content
@@ -78,5 +81,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_history(self):
-        messages = Message.objects.filter(posting_id=self.posting_id)
+        # Filter by both posting_id and inquirer_id to prevent cross-conversation leakage
+        messages = Message.objects.filter(
+            posting_id=self.posting_id,
+            inquirer_id=self.inquirer_id
+        )
         return [{'message': m.content, 'sender': m.sender_label} for m in messages]

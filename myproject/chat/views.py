@@ -32,10 +32,10 @@ def inbox(request):
         for p in my_posts
     ]
 
-    # Postings the user has participated in
+    # Postings the user has participated in as inquirer
     participated_ids = (
         Message.objects
-        .filter(sender=request.user)
+        .filter(sender=request.user, inquirer_id=request.user.id)
         .exclude(posting_id__in=my_posts.values_list('id', flat=True))
         .values_list('posting_id', flat=True)
         .distinct()
@@ -44,8 +44,12 @@ def inbox(request):
         {
             'posting_id': pid,
             'inquirer_id': request.user.id,
-            'message_count': Message.objects.filter(posting_id=pid).count(),
-            'last_message': Message.objects.filter(posting_id=pid).last(),
+            'message_count': Message.objects.filter(
+                posting_id=pid, inquirer_id=request.user.id
+            ).count(),
+            'last_message': Message.objects.filter(
+                posting_id=pid, inquirer_id=request.user.id
+            ).last(),
         }
         for pid in participated_ids
     ]
