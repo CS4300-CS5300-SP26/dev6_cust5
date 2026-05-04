@@ -560,6 +560,33 @@
                 </form>
             </div>
 
+            <!-- Json script tags-->
+            {{ amenity_filter|default:''|json_script:"amenity-filter-data" }}
+            {{ properties|json_script:"map-properties-data" }}
+            {{ city|default:''|json_script:"filter-city" }}
+            {{ state|default:''|json_script:"filter-state" }}
+            {{ listing_type|default:''|json_script:"filter-intent" }}
+            {{ property_type|default:''|json_script:"filter-type" }}
+            {{ price_range|default:''|json_script:"filter-budget" }}
+            {{ keyword|default:''|json_script:"filter-keyword" }}
+
+            <script>
+                function getFilterVal(id) {
+                    const el = document.getElementById(id);
+                    return el ? (JSON.parse(el.textContent) || "") : "";
+                }
+
+                const params = new URLSearchParams({
+                    city:    getFilterVal("filter-city"),
+                    state:   getFilterVal("filter-state"),
+                    intent:  getFilterVal("filter-intent"),
+                    type:    getFilterVal("filter-type"),
+                    budget:  getFilterVal("filter-budget"),
+                    amenity: getFilterVal("filter-amenity"),
+                    keyword: getFilterVal("filter-keyword"),
+                });
+            </script>
+
             <script>
             (function () {
                 const statusEl   = document.getElementById("aiChatStatus");
@@ -598,15 +625,7 @@
                 }
 
                 // Build the WebSocket URL from the same filters the page was loaded with.
-                const qs = new URLSearchParams({
-                    city:    "{{ city|escapejs }}",
-                    state:   "{{ state|escapejs }}",
-                    intent:  "{{ listing_type|escapejs }}",
-                    type:    "{{ property_type|escapejs }}",
-                    budget:  "{{ price_range|escapejs }}",
-                    amenity: "{{ amenity_filter|escapejs }}",
-                    keyword: "{{ keyword|escapejs }}",
-                });
+                const qs = filterParams;
                 const proto = location.protocol === "https:" ? "wss:" : "ws:";
                 const wsUrl = proto + "//" + location.host + "/ws/ai-agent/?" + qs.toString();
                 const ws = new WebSocket(wsUrl);
@@ -761,8 +780,9 @@
                 if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
                     return;
                 }
+                {{ amenity_filter|default:''|json_script:"filter-amenity"}}
+                const selectedAmenity = getFilterVal("filter-amenity");
 
-                const selectedAmenity = "{{ amenity_filter|default:''|escapejs }}";
                 const allAmenities = Array.isArray(loc.nearby_amenities)
                     ? loc.nearby_amenities
                     : [];
