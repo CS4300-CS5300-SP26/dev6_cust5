@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 from rest_framework import viewsets, permissions
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 
 from .models import AgentAd, AgentInquiry, RoommatePost, Property, SearchHistory
 from .serializers import RoommatePostSerializer
@@ -300,7 +300,7 @@ def agent_profile(request, ad_id):
     ad = get_object_or_404(AgentAd, pk=ad_id, active=True)
 
     if not ad.is_complete:
-        return render(request, 'agent_ads/not_found.html', status=404)
+        raise Http404("Agent profile is incomplete.")
 
     if request.method == 'POST':
         form = AgentInquiryForm(request.POST)
@@ -358,13 +358,9 @@ def roommate_list(request):
 
 
 # Creates a roommate post
-# Checks if user is logged in
-# Redirects back to home page with a msg if not logged in
+# Login required (redirects to LOGIN_URL with ?next= preserved)
+@login_required
 def roommate_create(request):
-    if not request.user.is_authenticated:
-        messages.warning(request, "Please log in.")
-        return redirect('bear_estate_homepage')  # replace 'home' with your home URL name
-
     if request.method == 'POST':
         form = RoommatePostForm(request.POST)
         if form.is_valid():

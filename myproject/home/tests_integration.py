@@ -131,7 +131,7 @@ class MapSearchIntegrationTest(TestCase):
         response = self.client.get('/map/', {'city': 'Boulder', 'state': 'CO'})
         self.assertEqual(response.status_code, 200)
         mock_api.assert_called_once()
-        data = json.loads(response.context['properties'])
+        data = response.context['properties']
         self.assertEqual(len(data), 1)
         self.assertIn('latitude', data[0])
         self.assertIn('longitude', data[0])
@@ -140,7 +140,7 @@ class MapSearchIntegrationTest(TestCase):
     def test_empty_api_result_renders_empty_map(self, _):
         response = self.client.get('/map/', {'city': 'Nowhere', 'state': 'XX'})
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.context['properties'])
+        data = response.context['properties']
         self.assertEqual(data, [])
 
     @patch('home.views.get_properties', return_value=[])
@@ -171,7 +171,7 @@ class MapSearchIntegrationTest(TestCase):
         )
         response = self.client.get('/map/')
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.context['properties'])
+        data = response.context['properties']
         self.assertEqual(len(data), 1)
 
     @patch('home.views.get_properties', return_value=MOCK_API_RESULT)
@@ -179,7 +179,7 @@ class MapSearchIntegrationTest(TestCase):
         """Searching via POST (from the map's own search bar) renders results."""
         response = self.client.post('/map/', {'city': 'Boulder', 'state': 'CO'})
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.context['properties'])
+        data = response.context['properties']
         self.assertGreater(len(data), 0)
 
     @patch('home.views.get_properties')
@@ -191,7 +191,7 @@ class MapSearchIntegrationTest(TestCase):
         }]
         with patch('home.views.geocode_residential', return_value=(40.0, -105.0)):
             response = self.client.get('/map/', {'city': 'Boulder', 'state': 'CO'})
-        data = json.loads(response.context['properties'])
+        data = response.context['properties']
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]['latitude'], 40.0)
 
@@ -419,7 +419,7 @@ class MapPriceFilter(TestCase):
         self.assertEqual(response.status_code, 200)     # Ensures the view returns a successful response
 
         # Extracts the properties from the response context
-        properties = json.loads(response.context.get('properties', '[]'))
+        properties = response.context.get('properties', [])
         total = [p['total_monthly_cost'] for p in properties]
         
         # Asserts that the returned data is in the correct order
@@ -573,8 +573,6 @@ class AIRecommendationFlowIntegrationTest(TestCase):
         self.assertEqual(body['advice'], "Tour the cheaper one first.")
         self.assertEqual(len(body['picks']), 2)
  
-        # Each pick should have the address from the original RentCast listing,
-        # plus the score and reasoning supplied by the (mocked) AI.
         first_pick = body['picks'][0]
         self.assertEqual(first_pick['address'], '100 Pearl St, Boulder, CO')
         self.assertEqual(first_pick['score'], 92)
@@ -630,7 +628,7 @@ class AIChatTurnIntegrationTest(TestCase):
         fake_client.chat.completions.create.side_effect = [first_response, second_response]
         mock_get_client.return_value = (fake_client, None)
  
-        # Run the turn.
+        # Run the turn
         result = chat_turn(history, initial_filters, initial_listings, refine_callback)
  
         # Assistant reply
@@ -644,9 +642,421 @@ class AIChatTurnIntegrationTest(TestCase):
         self.assertEqual(merged['budget'], '0-900')
         self.assertEqual(merged['city'], 'Boulder')
  
-        # Filters and listings should have been mutated in place to the new state.
+        # Filters and listings should have been mutated in place to the new state
         self.assertEqual(initial_filters['budget'], '0-900')
         self.assertEqual(initial_listings, new_listings_after_refine)
  
         # OpenAI should have been called twice (tool calling + reply)
         self.assertEqual(fake_client.chat.completions.create.call_count, 2)
+
+# Agent Advertising
+class AgentAdFlowIntegrationTest(TestCase):
+    """End-to-end flow for the agent advertising feature."""
+
+    def setUp(self):
+        from home.models import AgentAd
+        self.AgentAd = AgentAd
+
+        # Verified agent
+        self.agent = User.objects.create_user(
+            username='verified_agent', password='Pass123!',
+            email='agent@example.com',
+        )
+        profile = self.agent.profile
+        profile.is_agent_verified = True
+        profile.save()
+
+        # Unverified user 
+        self.regular_user = User.objects.create_user(
+            username='regular', password='Pass123!',
+        )
+
+        # Valid POST payload for AgentAdForm
+        self.valid_ad_data = {
+            'headline': 'Top agent in Boulder',
+            'city': 'Boulder',
+            'state': 'co',                    
+            'brokerage': 'Mountain Realty',
+            'license_number': 'LIC-12345',
+            'phone': '303-555-0100',
+            'email': 'agent@example.com',
+            'website': 'https://example.com',
+            'bio': 'Helping students find housing for 8 years.',
+            'specialties': 'Rentals, condos',
+            'active': 'on',
+        }
+
+    
+    def test_verified_agent_can_create_ad(self):
+        """Verified agent POSTs the form, ad is saved, state is uppercased."""
+        self.client.login(username='verified_agent', password='Pass123!')
+        response = self.client.post('/agents/ads/create/', self.valid_ad_data)
+
+        # Successful create redirects to the list page.
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, '/agents/ads/')
+        self.assertEqual(self.AgentAd.objects.count(), 1)
+
+        ad = self.AgentAd.objects.first()
+        self.assertEqual(ad.agent, self.agent)
+        self.assertEqual(ad.state, 'CO')      # uppercased by the view
+        self.assertEqual(ad.city, 'Boulder')
+        self.assertTrue(ad.active)
+
+    def test_create_form_get_prefills_email(self):
+        """GET to create page initialises the email field with the agent's email."""
+        self.client.login(username='verified_agent', password='Pass123!')
+        response = self.client.get('/agents/ads/create/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'agent@example.com')
+
+    def test_unverified_user_create_returns_403(self):
+        """Logged-in but unverified users see the not_verified page (403)."""
+        self.client.login(username='regular', password='Pass123!')
+        response = self.client.get('/agents/ads/create/')
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.AgentAd.objects.count(), 0)
+
+    def test_anonymous_create_redirects_to_login(self):
+        """Anonymous users hitting create are redirected to LOGIN_URL with ?next=."""
+        response = self.client.get('/agents/ads/create/')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('next=', response.url)
+
+    def test_invalid_form_does_not_create_ad(self):
+        """Missing required fields keeps the user on the form, no DB write."""
+        self.client.login(username='verified_agent', password='Pass123!')
+        bad_data = self.valid_ad_data.copy()
+        bad_data['headline'] = ''               # required
+        bad_data['license_number'] = ''         # required
+
+        response = self.client.post('/agents/ads/create/', bad_data)
+        self.assertEqual(response.status_code, 200)   # form re-rendered
+        self.assertEqual(self.AgentAd.objects.count(), 0)
+
+    
+    def _make_ad(self, **overrides):
+        defaults = dict(
+            agent=self.agent,
+            headline='Original Headline',
+            city='Boulder',
+            state='CO',
+            brokerage='Mountain Realty',
+            license_number='LIC-12345',
+            email='agent@example.com',
+            bio='Helping students.',
+            active=True,
+        )
+        defaults.update(overrides)
+        return self.AgentAd.objects.create(**defaults)
+
+    def test_verified_agent_can_edit_own_ad(self):
+        """Editing updates the fields and redirects back to the list."""
+        ad = self._make_ad()
+        self.client.login(username='verified_agent', password='Pass123!')
+
+        edit_data = self.valid_ad_data.copy()
+        edit_data['headline'] = 'Updated Headline'
+        edit_data['city'] = 'Denver'
+
+        response = self.client.post(f'/agents/ads/{ad.id}/edit/', edit_data)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, '/agents/ads/')
+
+        ad.refresh_from_db()
+        self.assertEqual(ad.headline, 'Updated Headline')
+        self.assertEqual(ad.city, 'Denver')
+
+    def test_agent_cannot_edit_someone_elses_ad(self):
+        """Editing an ad you don't own returns 404 (filtered by agent=request.user)."""
+        # Make an ad owned by a different verified agent
+        other = User.objects.create_user(username='other_agent', password='Pass123!')
+        other.profile.is_agent_verified = True
+        other.profile.save()
+        ad = self.AgentAd.objects.create(
+            agent=other, headline='Theirs', city='Aspen', state='CO',
+            brokerage='B', license_number='L', email='o@e.com', bio='b',
+        )
+
+        self.client.login(username='verified_agent', password='Pass123!')
+        response = self.client.get(f'/agents/ads/{ad.id}/edit/')
+        self.assertEqual(response.status_code, 404)
+
+    def test_unverified_user_edit_returns_403(self):
+        ad = self._make_ad()
+        self.client.login(username='regular', password='Pass123!')
+        response = self.client.get(f'/agents/ads/{ad.id}/edit/')
+        self.assertEqual(response.status_code, 403)
+
+    
+    def test_verified_agent_can_deactivate_ad(self):
+        """POST to deactivate flips active=False and redirects back to list."""
+        ad = self._make_ad(active=True)
+        self.client.login(username='verified_agent', password='Pass123!')
+
+        response = self.client.post(f'/agents/ads/{ad.id}/deactivate/')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, '/agents/ads/')
+
+        ad.refresh_from_db()
+        self.assertFalse(ad.active)
+
+    def test_get_to_deactivate_does_not_change_state(self):
+        """Only POST deactivates; GET should leave the ad active."""
+        ad = self._make_ad(active=True)
+        self.client.login(username='verified_agent', password='Pass123!')
+
+        self.client.get(f'/agents/ads/{ad.id}/deactivate/')
+        ad.refresh_from_db()
+        self.assertTrue(ad.active)
+
+    def test_unverified_user_deactivate_returns_403(self):
+        ad = self._make_ad()
+        self.client.login(username='regular', password='Pass123!')
+        response = self.client.post(f'/agents/ads/{ad.id}/deactivate/')
+        self.assertEqual(response.status_code, 403)
+        ad.refresh_from_db()
+        self.assertTrue(ad.active)
+
+   
+    def test_public_profile_loads_for_complete_active_ad(self):
+        """Anyone (no login) can view a complete, active ad's public profile."""
+        ad = self._make_ad()
+        response = self.client.get(f'/agents/{ad.id}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Original Headline')
+        self.assertContains(response, 'Mountain Realty')
+
+    def test_inactive_ad_profile_returns_404(self):
+        """Inactive ads are not publicly accessible."""
+        ad = self._make_ad(active=False)
+        response = self.client.get(f'/agents/{ad.id}/')
+        self.assertEqual(response.status_code, 404)
+
+    def test_incomplete_ad_profile_returns_404(self):
+        """Ads missing required fields render the not_found page (404)."""
+        ad = self._make_ad(bio='')   # incomplete -> is_complete is False
+        response = self.client.get(f'/agents/{ad.id}/')
+        self.assertEqual(response.status_code, 404)
+
+    def test_anonymous_user_can_submit_inquiry(self):
+        """Anonymous visitor POSTs the inquiry form; AgentInquiry is saved."""
+        from home.models import AgentInquiry
+        ad = self._make_ad()
+
+        response = self.client.post(f'/agents/{ad.id}/', {
+            'name': 'Jane Student',
+            'email': 'jane@example.com',
+            'message': 'Hi, I am looking for a 1-bedroom near campus.',
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'inquiry was sent successfully')
+        self.assertEqual(AgentInquiry.objects.count(), 1)
+
+        inquiry = AgentInquiry.objects.first()
+        self.assertEqual(inquiry.ad, ad)
+        self.assertIsNone(inquiry.user)                    # anonymous
+        self.assertEqual(inquiry.name, 'Jane Student')
+
+    def test_authenticated_user_inquiry_links_user(self):
+        """Logged-in user's inquiry stores the FK on AgentInquiry.user."""
+        from home.models import AgentInquiry
+        ad = self._make_ad()
+        self.client.login(username='regular', password='Pass123!')
+
+        self.client.post(f'/agents/{ad.id}/', {
+            'name': 'Regular User',
+            'email': 'r@e.com',
+            'message': 'Looking for a place.',
+        })
+
+        inquiry = AgentInquiry.objects.first()
+        self.assertIsNotNone(inquiry)
+        self.assertEqual(inquiry.user, self.regular_user)
+
+    def test_invalid_inquiry_does_not_create_record(self):
+        """Empty required fields keep the user on the page with no DB write."""
+        from home.models import AgentInquiry
+        ad = self._make_ad()
+
+        response = self.client.post(f'/agents/{ad.id}/', {
+            'name': '', 'email': 'not-an-email', 'message': '',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(AgentInquiry.objects.count(), 0)
+
+   
+    def test_get_relevant_agent_ads_filters_by_city_and_state(self):
+        """The helper used by /search/ and /map/ filters by city/state."""
+        from home.views import get_relevant_agent_ads
+
+        self._make_ad(city='Boulder', state='CO', headline='Boulder Ad')
+        self._make_ad(city='Denver',  state='CO', headline='Denver Ad')
+
+        boulder_ads = get_relevant_agent_ads(city='Boulder', state='CO')
+        self.assertEqual(len(boulder_ads), 1)
+        self.assertEqual(boulder_ads[0].headline, 'Boulder Ad')
+
+    def test_get_relevant_agent_ads_excludes_incomplete(self):
+        """Ads missing required fields are filtered out."""
+        from home.views import get_relevant_agent_ads
+
+        self._make_ad(headline='Complete Ad')
+        self._make_ad(headline='Incomplete', bio='')   # bio empty -> incomplete
+
+        ads = get_relevant_agent_ads(city='Boulder', state='CO')
+        self.assertEqual(len(ads), 1)
+        self.assertEqual(ads[0].headline, 'Complete Ad')
+
+    def test_get_relevant_agent_ads_excludes_inactive(self):
+        """Inactive ads do not appear in search/map sidebars."""
+        from home.views import get_relevant_agent_ads
+
+        self._make_ad(headline='Active', active=True)
+        self._make_ad(headline='Hidden', active=False)
+
+        ads = get_relevant_agent_ads(city='Boulder', state='CO')
+        headlines = [a.headline for a in ads]
+        self.assertIn('Active', headlines)
+        self.assertNotIn('Hidden', headlines)
+
+    def test_get_relevant_agent_ads_respects_limit(self):
+        """The limit parameter caps how many ads are returned."""
+        from home.views import get_relevant_agent_ads
+
+        for i in range(5):
+            self._make_ad(headline=f'Ad {i}')
+
+        ads = get_relevant_agent_ads(city='Boulder', state='CO', limit=2)
+        self.assertEqual(len(ads), 2)
+
+    def test_search_page_shows_relevant_agent_ads(self):
+        """The /roommate-posts/search/ page surfaces the agent ads sidebar."""
+        self._make_ad(headline='Featured Boulder Agent', city='Boulder', state='CO')
+        response = self.client.get(
+            '/roommate-posts/search/', {'city': 'Boulder', 'state': 'CO'},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Featured Boulder Agent')
+
+
+#Street View
+class StreetViewIntegrationTest(TestCase):
+    """End-to-end checks that make sure the map's Street View deeplink works."""
+
+    STREET_VIEW_PATTERN = 'maps/@?api=1&map_action=pano'
+
+    MOCK_API_RESULT = [
+        {
+            'id': 'sv1',
+            'formattedAddress': '100 Pearl St, Boulder, CO',
+            'city': 'Boulder', 'state': 'CO',
+            'price': 1200,
+            'latitude': 40.0190, 'longitude': -105.2747,
+            'propertyType': 'Apartment',
+            'bedrooms': 2, 'bathrooms': 1, 'squareFootage': 700,
+        },
+        {
+            'id': 'sv2',
+            'formattedAddress': '200 Walnut St, Boulder, CO',
+            'city': 'Boulder', 'state': 'CO',
+            'price': 1500,
+            'latitude': 40.0182, 'longitude': -105.2780,
+            'propertyType': 'Apartment',
+            'bedrooms': 1, 'bathrooms': 1, 'squareFootage': 600,
+        },
+    ]
+
+    @patch('home.views.get_properties')
+    def test_map_context_carries_lat_lng_for_each_property(self, mock_api):
+        """Every map marker must have latitude AND longitude in the context."""
+        mock_api.return_value = self.MOCK_API_RESULT
+        response = self.client.get('/map/', {'city': 'Boulder', 'state': 'CO'})
+
+        self.assertEqual(response.status_code, 200)
+        properties = response.context['properties']
+        self.assertEqual(len(properties), 2)
+
+        for prop in properties:
+            self.assertIn('latitude', prop)
+            self.assertIn('longitude', prop)
+            self.assertIsNotNone(prop['latitude'])
+            self.assertIsNotNone(prop['longitude'])
+
+    @patch('home.views.get_properties')
+    def test_map_html_contains_street_view_url_pattern(self, mock_api):
+        """The rendered map.html must include the Street View deeplink template."""
+        mock_api.return_value = self.MOCK_API_RESULT
+        response = self.client.get('/map/', {'city': 'Boulder', 'state': 'CO'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(self.STREET_VIEW_PATTERN, response.content.decode())
+
+    @patch('home.views.get_properties')
+    def test_map_html_serializes_properties_for_js(self, mock_api):
+        """json_script must put properties into the page so the JS can read them."""
+        mock_api.return_value = self.MOCK_API_RESULT
+        response = self.client.get('/map/', {'city': 'Boulder', 'state': 'CO'})
+
+        body = response.content.decode()
+        # Confirm json_script tag is rendered with the expected id
+        self.assertIn('id="map-properties-data"', body)
+        # Confirm the actual lat/lng made it into the embedded JSON payload
+        self.assertIn('40.019', body)
+        self.assertIn('-105.2747', body)
+
+    @patch('home.views.get_properties')
+    def test_geocoded_property_still_gets_street_view_coords(self, mock_api):
+        """When the API omits coords and geocoding fills them in, Street View still works."""
+        mock_api.return_value = [{
+            'formattedAddress': '1 Main St, Boulder, CO',
+            'propertyType': 'Apartment', 'price': 950,
+            # no latitude/longitude on purpose
+        }]
+        with patch('home.views.geocode_residential', return_value=(40.0150, -105.2705)):
+            response = self.client.get('/map/', {'city': 'Boulder', 'state': 'CO'})
+
+        properties = response.context['properties']
+        self.assertEqual(len(properties), 1)
+        # Geocoded lat/lng landed on the marker -> Street View deeplink will work
+        self.assertEqual(properties[0]['latitude'], 40.0150)
+        self.assertEqual(properties[0]['longitude'], -105.2705)
+        # And the deeplink template is still on the page
+        self.assertIn(self.STREET_VIEW_PATTERN, response.content.decode())
+
+    def test_local_db_properties_carry_coords_for_street_view(self):
+        """Local-DB fallback (no city/state) also supplies lat/lng for Street View."""
+        Property.objects.create(
+            title='Local With Coords', location='Boulder, CO',
+            listing_type='rent', property_type='apartment', price=1000,
+            latitude=40.01, longitude=-105.27,
+        )
+        Property.objects.create(
+            title='Local Without Coords', location='Denver, CO',
+            listing_type='rent', property_type='apartment', price=1100,
+            latitude=None, longitude=None,
+        )
+        response = self.client.get('/map/')
+        self.assertEqual(response.status_code, 200)
+
+        properties = response.context['properties']
+        self.assertEqual(len(properties), 1)
+        self.assertIn('latitude', properties[0])
+        self.assertIn('longitude', properties[0])
+        # Street View URL template is in the page so the JS can build the link
+        self.assertIn(self.STREET_VIEW_PATTERN, response.content.decode())
+
+    @patch('home.views.get_properties')
+    def test_empty_results_still_render_street_view_template(self, mock_api):
+        """No properties returned still renders the JS that would build links."""
+        mock_api.return_value = []
+        response = self.client.get('/map/', {'city': 'Nowhere', 'state': 'XX'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['properties'], [])
+
+        self.assertIn(self.STREET_VIEW_PATTERN, response.content.decode())

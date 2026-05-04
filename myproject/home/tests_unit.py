@@ -11,6 +11,7 @@ from home.ai_listing_agent import (
     get_ai_recommendations,
     build_initial_history,
     MAX_LISTINGS_SENT,
+    check_message_guardrails,
 )
 from urllib.parse import urlencode
 from asgiref.sync import async_to_sync
@@ -354,7 +355,7 @@ class MapViewPostTest(TestCase):
         }]
         response = self.client.post('/map/', {'city': 'Boulder', 'state': 'CO'})
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.context['properties'])
+        data = response.context['properties']
         self.assertEqual(len(data), 1)
         self.assertIn('latitude', data[0])
 
@@ -369,7 +370,7 @@ class MapViewPostTest(TestCase):
         with patch('home.views.geocode_residential', return_value=(40.01, -105.27)):
             response = self.client.get('/map/', {'city': 'Boulder', 'state': 'CO'})
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.context['properties'])
+        data = response.context['properties']
         self.assertEqual(len(data), 1)
 
 
@@ -675,7 +676,7 @@ class MapPriceFilter(TestCase):
         
         # Returns list of properties
         # properties = [{entry1}, {entry2}, ...]
-        properties = json.loads(response.context.get('properties', '[]'))
+        properties = response.context.get('properties', [])
         
         # Asserts that monthly_utilities and monthly_services fields are present in the returned properties
         for i in properties:
@@ -1234,3 +1235,134 @@ class AgentAds(TestCase):
         self.assertTrue(new_agent.agent.is_authenticated)
         self.assertEqual(new_agent.headline, 'Headline')
         self.assertEqual(new_agent.brokerage, 'Brokerage')
+
+# Gaurdrails for AI Chatbot
+class GuardrailUnitTests(TestCase):
+    """Server-side topic + profanity gate, no LLM involved."""
+
+    def test_housing_question_passes(self):
+        result = check_message_guardrails(
+            "Which of these apartments has the lowest rent?"
+        )
+        self.assertTrue(result["ok"])
+
+    def test_short_followup_passes_even_without_keywords(self):
+        for text in ["why?", "ok", "the cheaper one", "tell me more"]:
+            self.assertTrue(check_message_guardrails(text)["ok"], text)
+
+    def test_long_off_topic_message_is_blocked(self):
+        result = check_message_guardrails(
+            "Can you write me a python function that solves my calculus homework?"
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason"], "off_topic")
+        self.assertIn("place to live", result["reply"].lower())
+
+    def test_off_topic_with_housing_word_passes(self):
+        result = check_message_guardrails(
+            "Can I cook spicy recipes in this apartment without setting off alarms?"
+        )
+        self.assertTrue(result["ok"])
+
+    def test_profanity_is_blocked(self):
+        from home.ai_listing_agent import _BUILTIN_PROFANITY
+        with patch.object(
+            __import__("home.ai_listing_agent", fromlist=["_is_profane"]),
+            "_is_profane", return_value=True,
+        ):
+            result = check_message_guardrails("you are a [slur]")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason"], "profanity")
+
+
+@override_settings(CHANNEL_LAYERS=IN_MEMORY_CHANNEL_LAYERS)
+class GuardrailConsumerTests(TransactionTestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="sahana", password="pw12345678!")
+
+    def _build(self):
+        return _build_communicator(self.user, _qs(city="Boulder", state="CO"))
+
+    def test_ready_event_includes_language_notice(self):
+        async def body():
+            with patch("home.views.build_enriched_listings", return_value=[]):
+                communicator = self._build()
+                await communicator.connect()
+                ready = await communicator.receive_json_from()
+                self.assertEqual(ready["type"], "ready")
+                self.assertIn("notice", ready)
+                self.assertIn("respectful", ready["notice"].lower())
+                await communicator.disconnect()
+        async_to_sync(body)()
+
+    def test_off_topic_message_is_blocked_without_calling_llm(self):
+        async def body():
+            with patch("home.views.build_enriched_listings", return_value=[]), \
+                 patch("home.ai_listing_agent.chat_turn") as mock_chat:
+                communicator = self._build()
+                await communicator.connect()
+                await communicator.receive_json_from()  # 'ready'
+
+                await communicator.send_to(text_data=json.dumps({
+                    "type": "user_message",
+                    "text": "Write me a python script to do my calculus homework."
+                }))
+
+                echo = await communicator.receive_json_from()
+                self.assertEqual(echo["type"], "user_message")
+
+                blocked = await communicator.receive_json_from()
+                self.assertEqual(blocked["type"], "system_message")
+                self.assertEqual(blocked["reason"], "off_topic")
+
+                # No 'thinking' frame, no assistant_message — the LLM was
+                # never called.
+                self.assertTrue(await communicator.receive_nothing(timeout=0.3))
+                mock_chat.assert_not_called()
+                await communicator.disconnect()
+        async_to_sync(body)()
+
+    def test_blocked_message_does_not_pollute_history(self):
+
+        captured = {}
+
+        def fake_chat_turn(history, filters, listings, refine):
+            
+            captured["user_msgs"] = [
+                m["content"] for m in history if m["role"] == "user"
+                and not m["content"].startswith("Here is the starting context")
+            ]
+            return {"ok": True, "reply": "ok", "refined": False,
+                    "filters": filters, "listings": listings, "error": None}
+
+        async def body():
+            with patch("home.views.build_enriched_listings", return_value=[]), \
+                 patch("home.ai_listing_agent.chat_turn", side_effect=fake_chat_turn):
+                communicator = self._build()
+                await communicator.connect()
+                await communicator.receive_json_from()  # 'ready'
+
+                # Blocked message
+                await communicator.send_to(text_data=json.dumps({
+                    "type": "user_message",
+                    "text": "translate this to spanish: hello world how are you doing today"
+                }))
+                await communicator.receive_json_from()  # echo
+                await communicator.receive_json_from()  # system_message
+
+                # Legit message
+                await communicator.send_to(text_data=json.dumps({
+                    "type": "user_message",
+                    "text": "Which apartment has the cheapest rent?"
+                }))
+                await communicator.receive_json_from()  # echo
+                await communicator.receive_json_from()  # thinking
+                await communicator.receive_json_from()  # assistant_message
+                await communicator.disconnect()
+
+        async_to_sync(body)()
+        self.assertEqual(
+            captured["user_msgs"],
+            ["Which apartment has the cheapest rent?"],
+            "Blocked message should not appear in history sent to LLM",
+        )

@@ -79,10 +79,10 @@ class PropertyFilterTests(TestCase):
 
     @patch('home.views.get_properties', return_value=MOCK_API_PROPERTIES)
     def test_map_returns_api_properties_in_context(self, mock_api):
-        """API results are serialised and placed in the template context."""
+        """API results are placed in the template context as a list."""
         response = self.client.get('/map/', {'city': 'Boulder', 'state': 'CO'})
         self.assertEqual(response.status_code, 200)
-        map_data = json.loads(response.context['properties'])
+        map_data = response.context['properties']
         self.assertEqual(len(map_data), 2)
 
     @patch('home.views.get_properties', return_value=[])
@@ -178,8 +178,8 @@ class PropertyMapTest(TestCase):
         response = self.client.get('/map/', {'city': 'Boulder', 'state': 'CO'})
         self.assertEqual(response.status_code, 200)
 
-        # context['properties'] is a JSON string of map markers
-        map_data = json.loads(response.context['properties'])
+        # context['properties'] is a list of map markers
+        map_data = response.context['properties']
         self.assertTrue(len(map_data) > 0, "map_data is empty")
 
         first = map_data[0]
@@ -455,5 +455,3 @@ class AgentAds(TestCase):
         response = self.client.get('/agents/ads/')             # agent ad list URL
         self.assertEqual(response.status_code, 302)     
         self.assertIn("/", response.url)                        # redirected to homepage
-        
-        
