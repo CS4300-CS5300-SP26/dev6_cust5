@@ -8,7 +8,7 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 #DEBUG = "TRUE"
-#DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
+DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
 
 # SECRET_KEY
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
