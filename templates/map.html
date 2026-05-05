@@ -561,19 +561,25 @@
             </div>
 
             <script>
+                // Helper for scripts that run after the DOM is fully parsed
+                // (e.g. addMarkers below). Reads a value out of a
+                // {json_script}-rendered tag by id.
                 function getFilterVal(id) {
                     const el = document.getElementById(id);
                     return el ? (JSON.parse(el.textContent) || "") : "";
                 }
 
+                // Build WebSocket params from Django context directly.
+                // We can't use getFilterVal here because this script runs
+                // inline, before the json_script tags below are parsed.
                 const params = new URLSearchParams({
-                    city:    getFilterVal("filter-city"),
-                    state:   getFilterVal("filter-state"),
-                    intent:  getFilterVal("filter-intent"),
-                    type:    getFilterVal("filter-type"),
-                    budget:  getFilterVal("filter-budget"),
-                    amenity: getFilterVal("filter-amenity"),
-                    keyword: getFilterVal("filter-keyword"),
+                    city:    "{{ city|escapejs }}",
+                    state:   "{{ state|escapejs }}",
+                    intent:  "{{ listing_type|escapejs }}",
+                    type:    "{{ property_type|escapejs }}",
+                    budget:  "{{ price_range|escapejs }}",
+                    amenity: "{{ amenity_filter|escapejs }}",
+                    keyword: "{{ keyword|escapejs }}",
                 });
             </script>
 
