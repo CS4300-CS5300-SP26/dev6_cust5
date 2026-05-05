@@ -40,14 +40,11 @@ jobs:
           cd myproject
           sed -i 's/DEBUG = True/DEBUG = False/' myproject/settings.py
 
-            #run flake8 on the repository and save the results to a report file
+      #run flake8 on the repository and save the results to a report file
       - name: Run flake8 lint scan
         run: |
           mkdir -p reports
-          set +e
-          flake8 . --statistics --count > reports/flake8-report.txt 2>&1
-          cat reports/flake8-report.txt
-          exit 0
+          flake8 . --statistics --count | tee reports/flake8-report.txt
 
       #upload the flake8 report so it can be viewed from the workflow run
       - name: Upload flake8 report
