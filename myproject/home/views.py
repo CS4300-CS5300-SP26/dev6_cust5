@@ -1,26 +1,25 @@
-from django.shortcuts import render, redirect, get_object_or_404
+import base64
+import io
+import time
+
+import pyotp
+import qrcode
+import requests
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.http import Http404, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from rest_framework import permissions, viewsets
 
-from rest_framework import viewsets, permissions
-from django.http import JsonResponse, Http404
-
-from .models import AgentAd, AgentInquiry, RoommatePost, Property, SearchHistory
-from .serializers import RoommatePostSerializer
-from .forms import AgentAdForm, AgentInquiryForm, CustomRegisterForm, RoommatePostForm
-from .rentcast_api import get_properties
 from .ai_listing_agent import get_ai_recommendations
-from .security import rate_limit, EMAIL_OTP_TTL_SECONDS
-
-import json
-import time
-import requests
-import pyotp
-import qrcode, io, base64
-
+from .forms import AgentAdForm, AgentInquiryForm, CustomRegisterForm, RoommatePostForm
+from .models import AgentAd, Property, RoommatePost, SearchHistory
+from .rentcast_api import get_properties
+from .security import EMAIL_OTP_TTL_SECONDS, rate_limit
+from .serializers import RoommatePostSerializer
 
 # ---------------------- NEIGHBORHOOD MOCK DATA ---------------------- #
 
@@ -106,6 +105,7 @@ def get_neighborhood_profile(city, state, address):
 
 # ---------------------- AGENT ADVERTISING HELPERS ---------------------- #
 
+
 def score_listing_for_agent(property_data, user_preferences):
     """
     Scores a property based on the user's filters/search choices.
@@ -170,11 +170,21 @@ def generate_agent_message(user_preferences, recommended_properties):
         return "No curated recommendations are available yet for your current filters."
 
     if listing_type == "for_rent":
-        return f"Based on your rental search in {city}, these agent picks best match your budget, property preferences, and nearby amenities like {amenity}."
+        return (
+            f"Based on your rental search in {city}, these agent picks best "
+            "match your budget, property preferences, and nearby amenities "
+            f"like {amenity}."
+        )
     elif listing_type == "for_sale":
-        return f"Based on your home-buying search in {city}, these curated listings are strong matches for your selected filters and neighborhood preferences."
+        return (
+            f"Based on your home-buying search in {city}, these curated "
+            "listings are strong matches for your selected filters and neighborhood preferences."
+        )
     else:
-        return f"Based on your search in {city}, these curated listings best match your filters, searched amenities, and likely housing needs."
+        return (
+            f"Based on your search in {city}, these curated listings best match "
+            "your filters, searched amenities, and likely housing needs."
+        )
 
 
 def get_buyer_readiness_message(user_preferences):
@@ -195,19 +205,15 @@ def get_buyer_readiness_message(user_preferences):
 
 
 def user_is_verified_agent(user):
-    return (
-        user.is_authenticated
-        and hasattr(user, 'profile')
-        and user.profile.is_agent_verified
-    )
+    return user.is_authenticated and hasattr(user, "profile") and user.profile.is_agent_verified
 
 
-def get_relevant_agent_ads(city='', state='', limit=3):
+def get_relevant_agent_ads(city="", state="", limit=3):
     """
     Return active, complete ads matching the search location when possible.
     If no city/state is provided, it returns active complete ads generally.
     """
-    ads = AgentAd.objects.filter(active=True).select_related('agent')
+    ads = AgentAd.objects.filter(active=True).select_related("agent")
 
     if city:
         ads = ads.filter(city__iexact=city)
@@ -225,75 +231,86 @@ def agent_ad_list(request):
     # Checks if user is logged in or not
     if not request.user.is_authenticated:
         messages.warning(request, "Please log in.")
-        return redirect('bear_estate_homepage')     # redirects to homepage
-    
+        return redirect("bear_estate_homepage")  # redirects to homepage
+
     # Checks if user is a verified agent
     if not user_is_verified_agent(request.user):
-        return render(request, 'agent_ads/not_verified.html', status=403)
+        return render(request, "agent_ads/not_verified.html", status=403)
 
     ads = AgentAd.objects.filter(agent=request.user)
-    return render(request, 'agent_ads/list.html', {'ads': ads})
+    return render(request, "agent_ads/list.html", {"ads": ads})
 
 
 @login_required
 def agent_ad_create(request):
     if not user_is_verified_agent(request.user):
-        return render(request, 'agent_ads/not_verified.html', status=403)
+        return render(request, "agent_ads/not_verified.html", status=403)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = AgentAdForm(request.POST)
         if form.is_valid():
             ad = form.save(commit=False)
             ad.agent = request.user
             ad.state = ad.state.upper()
             ad.save()
-            return redirect('agent_ad_list')
+            return redirect("agent_ad_list")
     else:
-        form = AgentAdForm(initial={
-            'email': request.user.email,
-        })
+        form = AgentAdForm(
+            initial={
+                "email": request.user.email,
+            }
+        )
 
-    return render(request, 'agent_ads/form.html', {
-        'form': form,
-        'title': 'Create Agent Advertisement',
-    })
+    return render(
+        request,
+        "agent_ads/form.html",
+        {
+            "form": form,
+            "title": "Create Agent Advertisement",
+        },
+    )
 
 
 @login_required
 def agent_ad_edit(request, ad_id):
     if not user_is_verified_agent(request.user):
-        return render(request, 'agent_ads/not_verified.html', status=403)
+        return render(request, "agent_ads/not_verified.html", status=403)
 
     ad = get_object_or_404(AgentAd, id=ad_id, agent=request.user)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = AgentAdForm(request.POST, instance=ad)
         if form.is_valid():
             ad = form.save(commit=False)
             ad.state = ad.state.upper()
             ad.save()
-            return redirect('agent_ad_list')
+            return redirect("agent_ad_list")
     else:
         form = AgentAdForm(instance=ad)
 
-    return render(request, 'agent_ads/form.html', {
-        'form': form,
-        'title': 'Edit Agent Advertisement',
-    })
+    return render(
+        request,
+        "agent_ads/form.html",
+        {
+            "form": form,
+            "title": "Edit Agent Advertisement",
+        },
+    )
 
 
 @login_required
 def agent_ad_deactivate(request, ad_id):
     if not user_is_verified_agent(request.user):
-        return render(request, 'agent_ads/not_verified.html', status=403)
+        return render(request, "agent_ads/not_verified.html", status=403)
 
     ad = get_object_or_404(AgentAd, id=ad_id, agent=request.user)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         ad.active = False
-        ad.save(update_fields=['active', 'updated_at'])
+        ad.save(update_fields=["active", "updated_at"])
 
-    return redirect('agent_ad_list')
+    return redirect("agent_ad_list")
+
 
 @rate_limit(
     "agent_inquiry",
@@ -307,7 +324,7 @@ def agent_profile(request, ad_id):
     if not ad.is_complete:
         raise Http404("Agent profile is incomplete.")
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = AgentInquiryForm(request.POST)
         if form.is_valid():
             inquiry = form.save(commit=False)
@@ -318,65 +335,78 @@ def agent_profile(request, ad_id):
 
             inquiry.save()
 
-            return render(request, 'agent_ads/profile.html', {
-                'ad': ad,
-                'form': AgentInquiryForm(),
-                'message_sent': True,
-            })
+            return render(
+                request,
+                "agent_ads/profile.html",
+                {
+                    "ad": ad,
+                    "form": AgentInquiryForm(),
+                    "message_sent": True,
+                },
+            )
     else:
         initial = {}
 
         if request.user.is_authenticated:
             initial = {
-                'name': request.user.get_full_name() or request.user.username,
-                'email': request.user.email,
+                "name": request.user.get_full_name() or request.user.username,
+                "email": request.user.email,
             }
 
         form = AgentInquiryForm(initial=initial)
 
-    return render(request, 'agent_ads/profile.html', {
-        'ad': ad,
-        'form': form,
-    })
+    return render(
+        request,
+        "agent_ads/profile.html",
+        {
+            "ad": ad,
+            "form": form,
+        },
+    )
 
 
 # ------------------------------- HTML views -------------------------------- #
+
 
 # Home page
 def search(request):
     properties = Property.objects.all()
 
-    city = request.GET.get('city', '').strip().title()
-    state = request.GET.get('state', '').strip().upper()
+    city = request.GET.get("city", "").strip().title()
+    state = request.GET.get("state", "").strip().upper()
     agent_ads = get_relevant_agent_ads(city=city, state=state)
 
-    return render(request, "search.html", {
-        "properties": properties,
-        "agent_ads": agent_ads,
-    })
+    return render(
+        request,
+        "search.html",
+        {
+            "properties": properties,
+            "agent_ads": agent_ads,
+        },
+    )
 
 
 # See all roommate posts
 def roommate_list(request):
-    posts = RoommatePost.objects.all().order_by('-date')
-    return render(request, 'roommate_postings_view.html', {'posts': posts})
+    posts = RoommatePost.objects.all().order_by("-date")
+    return render(request, "roommate_postings_view.html", {"posts": posts})
 
 
 # Creates a roommate post
 # Login required (redirects to LOGIN_URL with ?next= preserved)
 @login_required
 def roommate_create(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = RoommatePostForm(request.POST)
         if form.is_valid():
             post = form.save(commit=False)
             post.user = request.user
             post.save()
-            return redirect('roommate_list')
+            return redirect("roommate_list")
     else:
-        form = RoommatePostForm(initial={'date': timezone.now().date()})
+        form = RoommatePostForm(initial={"date": timezone.now().date()})
 
-    return render(request, 'roommate_create.html', {'form': form})
+    return render(request, "roommate_create.html", {"form": form})
 
 
 # Changes roommate post status to closed
@@ -385,11 +415,11 @@ def roommate_create(request):
 def roommate_close(request, post_id):
     post = get_object_or_404(RoommatePost, id=post_id, user=request.user)
 
-    if request.method == 'POST':
-        post.status = 'closed'
+    if request.method == "POST":
+        post.status = "closed"
         post.save()
 
-    return redirect('roommate_list')
+    return redirect("roommate_list")
 
 
 # Deletes a roommate post
@@ -398,13 +428,14 @@ def roommate_close(request, post_id):
 def roommate_delete(request, post_id):
     post = get_object_or_404(RoommatePost, id=post_id, user=request.user)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         post.delete()
 
-    return redirect('roommate_list')
+    return redirect("roommate_list")
 
 
 # --------------------------------- MAP ------------------------------------------ #
+
 
 # Map View
 def map_view(request):
@@ -420,36 +451,36 @@ def map_view(request):
     buyer_readiness_message = ""
 
     # Default values so nothing breaks
-    city = ''
-    state = ''
-    listing_type = ''
-    property_type = ''
-    price_range = ''
-    sort_by = ''
-    amenity_filter = ''
-    keyword = ''
+    city = ""
+    state = ""
+    listing_type = ""
+    property_type = ""
+    price_range = ""
+    sort_by = ""
+    amenity_filter = ""
+    keyword = ""
 
     # Read params from POST (search bar)
-    if request.method == 'POST':
-        city = request.POST.get('city', '').strip().title()
-        state = request.POST.get('state', '').strip().upper()
-        listing_type = request.POST.get('intent', '').strip()
-        property_type = request.POST.get('type', '').strip()
-        price_range = request.POST.get('budget', '').strip()
-        sort_by = request.POST.get('sort', '').strip()
-        amenity_filter = request.POST.get('amenity', '').strip()
+    if request.method == "POST":
+        city = request.POST.get("city", "").strip().title()
+        state = request.POST.get("state", "").strip().upper()
+        listing_type = request.POST.get("intent", "").strip()
+        property_type = request.POST.get("type", "").strip()
+        price_range = request.POST.get("budget", "").strip()
+        sort_by = request.POST.get("sort", "").strip()
+        amenity_filter = request.POST.get("amenity", "").strip()
         keyword = request.POST.get("keyword", "").strip()
         print("FROM POST:", city, state)
 
     # Read params from GET (redirect from landing page)
-    elif request.method == 'GET':
-        city = request.GET.get('city', '').strip().title()
-        state = request.GET.get('state', '').strip().upper()
-        listing_type = request.GET.get('intent', '').strip()
-        property_type = request.GET.get('type', '').strip()
-        price_range = request.GET.get('budget', '').strip()
-        sort_by = request.GET.get('sort', '').strip()
-        amenity_filter = request.GET.get('amenity', '').strip()
+    elif request.method == "GET":
+        city = request.GET.get("city", "").strip().title()
+        state = request.GET.get("state", "").strip().upper()
+        listing_type = request.GET.get("intent", "").strip()
+        property_type = request.GET.get("type", "").strip()
+        price_range = request.GET.get("budget", "").strip()
+        sort_by = request.GET.get("sort", "").strip()
+        amenity_filter = request.GET.get("amenity", "").strip()
         keyword = request.GET.get("keyword", "").strip()
         print("FROM GET:", city, state)
 
@@ -458,12 +489,7 @@ def map_view(request):
         location_str = f"{city}, {state}"
 
         # Fetch filtered listings from RentCast
-        rentcast_results = fetch_filtered_properties(
-            location_str,
-            listing_type,
-            property_type,
-            price_range
-        )
+        rentcast_results = fetch_filtered_properties(location_str, listing_type, property_type, price_range)
 
         # Loop through results from API
         for prop in rentcast_results:
@@ -490,41 +516,41 @@ def map_view(request):
                 nearby_amenities = profile["nearby_amenities"]
                 total_monthly_cost = rent + monthly_utilities + monthly_services
 
-                map_properties.append({
-                    'latitude': lat,
-                    'longitude': lng,
-                    'location': address,
-                    'property_type': prop.get("propertyType", "Unknown type"),
-                    'rent': rent,
-                    'beds': prop.get("bedrooms"),
-                    'baths': prop.get("bathrooms"),
-                    'sqft': prop.get("squareFootage"),
-                    'neighborhood': neighborhood,
-                    'monthly_utilities': monthly_utilities,
-                    'monthly_services': monthly_services,
-                    'nearby_amenities': nearby_amenities,
-                    'total_monthly_cost': total_monthly_cost,
-                })
+                map_properties.append(
+                    {
+                        "latitude": lat,
+                        "longitude": lng,
+                        "location": address,
+                        "property_type": prop.get("propertyType", "Unknown type"),
+                        "rent": rent,
+                        "beds": prop.get("bedrooms"),
+                        "baths": prop.get("bathrooms"),
+                        "sqft": prop.get("squareFootage"),
+                        "neighborhood": neighborhood,
+                        "monthly_utilities": monthly_utilities,
+                        "monthly_services": monthly_services,
+                        "nearby_amenities": nearby_amenities,
+                        "total_monthly_cost": total_monthly_cost,
+                    }
+                )
 
         # Optional amenity filter
         if amenity_filter and amenity_filter.lower() != "any":
             map_properties = [
-                p for p in map_properties
-                if any(
-                    amenity_filter.lower() in amenity.lower()
-                    for amenity in p.get("nearby_amenities", [])
-                )
+                p
+                for p in map_properties
+                if any(amenity_filter.lower() in amenity.lower() for amenity in p.get("nearby_amenities", []))
             ]
 
         # Optional sorting
-        if sort_by == 'rent_asc':
-            map_properties.sort(key=lambda p: p.get('rent') or 0)
-        elif sort_by == 'rent_desc':
-            map_properties.sort(key=lambda p: p.get('rent') or 0, reverse=True)
-        elif sort_by == 'total_cost_asc':
-            map_properties.sort(key=lambda p: p.get('total_monthly_cost') or 0)
-        elif sort_by == 'total_cost_desc':
-            map_properties.sort(key=lambda p: p.get('total_monthly_cost') or 0, reverse=True)
+        if sort_by == "rent_asc":
+            map_properties.sort(key=lambda p: p.get("rent") or 0)
+        elif sort_by == "rent_desc":
+            map_properties.sort(key=lambda p: p.get("rent") or 0, reverse=True)
+        elif sort_by == "total_cost_asc":
+            map_properties.sort(key=lambda p: p.get("total_monthly_cost") or 0)
+        elif sort_by == "total_cost_desc":
+            map_properties.sort(key=lambda p: p.get("total_monthly_cost") or 0, reverse=True)
 
         # ---------------- AGENT ADVERTISING / CURATED PICKS ---------------- #
 
@@ -541,11 +567,7 @@ def map_view(request):
         for prop in map_properties:
             prop["agent_score"] = score_listing_for_agent(prop, user_preferences)
 
-        recommended_properties = sorted(
-            map_properties,
-            key=lambda p: p.get("agent_score", 0),
-            reverse=True
-        )[:3]
+        recommended_properties = sorted(map_properties, key=lambda p: p.get("agent_score", 0), reverse=True)[:3]
 
         agent_message = generate_agent_message(user_preferences, recommended_properties)
         buyer_readiness_message = get_buyer_readiness_message(user_preferences)
@@ -553,26 +575,26 @@ def map_view(request):
     else:
         # Defaults context to empty / existing DB properties
         all_properties = Property.objects.exclude(latitude=None, longitude=None)
-        map_properties = list(all_properties.values('latitude', 'longitude', 'location'))
+        map_properties = list(all_properties.values("latitude", "longitude", "location"))
 
     context = {
-        'properties': map_properties,
-        'properties_count': len(map_properties),
-        'city': city,
-        'state': state,
-        'listing_type': listing_type,
-        'property_type': property_type,
-        'price_range': price_range,
-        'sort_by': sort_by,
-        'amenity_filter': amenity_filter,
-        'keyword': keyword,
-        'recommended_properties': recommended_properties,
-        'agent_message': agent_message,
-        'buyer_readiness_message': buyer_readiness_message,
-        'agent_ads': get_relevant_agent_ads(city=city, state=state),
+        "properties": map_properties,
+        "properties_count": len(map_properties),
+        "city": city,
+        "state": state,
+        "listing_type": listing_type,
+        "property_type": property_type,
+        "price_range": price_range,
+        "sort_by": sort_by,
+        "amenity_filter": amenity_filter,
+        "keyword": keyword,
+        "recommended_properties": recommended_properties,
+        "agent_message": agent_message,
+        "buyer_readiness_message": buyer_readiness_message,
+        "agent_ads": get_relevant_agent_ads(city=city, state=state),
     }
 
-    return render(request, 'map.html', context)
+    return render(request, "map.html", context)
 
 
 # Geocode helper function
@@ -582,11 +604,7 @@ def geocode_residential(address):
     Returns a tuple of (latitude, longitude) or None if the address could not be found.
     """
     url = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
-    params = {
-        "address": address,
-        "benchmark": "Public_AR_Current",
-        "format": "json"
-    }
+    params = {"address": address, "benchmark": "Public_AR_Current", "format": "json"}
     response = requests.get(url, params=params, timeout=10)
     data = response.json()
     matches = data["result"]["addressMatches"]
@@ -624,56 +642,57 @@ def fetch_filtered_properties(location, listing_type=None, property_type=None, p
 
 # ------------------------ HOME PAGE -------------------------- #
 
+
 # Home page
 @rate_limit(
     "login",
-    limit=5,                # 5 failed attempts...
-    window_seconds=300,     # ...per 5 minutes per IP
-    only_on_failure=True,   # successful logins don't burn the budget
+    limit=5,  # 5 failed attempts...
+    window_seconds=300,  # ...per 5 minutes per IP
+    only_on_failure=True,  # successful logins don't burn the budget
 )
 def index(request):
     context = {}
 
     # ---------------- LOGIN HANDLING ----------------
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
 
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            profile = getattr(user, 'profile', None)
-            if profile and profile.totp_enabled and profile.two_fa_method in ('totp', 'email'):
+            profile = getattr(user, "profile", None)
+            if profile and profile.totp_enabled and profile.two_fa_method in ("totp", "email"):
                 # Pre-auth state: user proved the password but is not
                 # yet logged in. Django's session is anonymous here.
-                request.session['pre_2fa_user_id'] = user.id
-                request.session['pre_2fa_method'] = profile.two_fa_method
-                request.session['pre_2fa_started_at'] = int(time.time())
+                request.session["pre_2fa_user_id"] = user.id
+                request.session["pre_2fa_method"] = profile.two_fa_method
+                request.session["pre_2fa_started_at"] = int(time.time())
                 # Make sure no stale email OTP is left over.
-                request.session.pop('login_email_otp', None)
-                request.session.pop('login_email_otp_expires', None)
-                return redirect('2fa_verify_login')
+                request.session.pop("login_email_otp", None)
+                request.session.pop("login_email_otp_expires", None)
+                return redirect("2fa_verify_login")
 
             # No 2FA configured: log in normally.
             login(request, user)
-            return redirect('bear_estate_homepage')
+            return redirect("bear_estate_homepage")
         else:
             # counts this attempt.
             request._ratelimit_failure = True
-            context['login_error'] = 'Invalid username or password.'
-            context['show_login_modal'] = True
+            context["login_error"] = "Invalid username or password."
+            context["show_login_modal"] = True
 
     # ---------------- PROPERTY SEARCH ----------------
-    properties = Property.objects.none()
+    # properties = Property.objects.none()
 
     location = request.GET.get("location", "").strip()
-    city = ''
-    state = ''
+    city = ""
+    state = ""
 
     if location:
         parts = location.split(",")
-        city = parts[0].strip() if len(parts) > 0 else ''
-        state = parts[1].strip() if len(parts) > 1 else ''
+        city = parts[0].strip() if len(parts) > 0 else ""
+        state = parts[1].strip() if len(parts) > 1 else ""
 
     listing_type = request.GET.get("mode", "").strip()
     property_type = request.GET.get("type", "").strip()
@@ -718,11 +737,11 @@ _PRE_2FA_TTL_SECONDS = 10 * 60  # 10 minutes
 
 def _clear_pre_2fa_session(request):
     for k in (
-        'pre_2fa_user_id',
-        'pre_2fa_method',
-        'pre_2fa_started_at',
-        'login_email_otp',
-        'login_email_otp_expires',
+        "pre_2fa_user_id",
+        "pre_2fa_method",
+        "pre_2fa_started_at",
+        "login_email_otp",
+        "login_email_otp_expires",
     ):
         request.session.pop(k, None)
 
@@ -732,8 +751,8 @@ def _get_pre_2fa_user(request):
     Returns the User who passed password auth but hasn't completed
     2FA, or None if no valid pre-auth state is in the session.
     """
-    user_id = request.session.get('pre_2fa_user_id')
-    started_at = request.session.get('pre_2fa_started_at', 0)
+    user_id = request.session.get("pre_2fa_user_id")
+    started_at = request.session.get("pre_2fa_started_at", 0)
     if not user_id:
         return None
     if int(time.time()) - int(started_at) > _PRE_2FA_TTL_SECONDS:
@@ -757,94 +776,94 @@ def verify_2fa_login(request):
             login() and complete the authentication.
     """
     import random
+
     from django.core.mail import send_mail
 
     user = _get_pre_2fa_user(request)
     if user is None:
-        return redirect('bear_estate_homepage')
+        return redirect("bear_estate_homepage")
 
-    method = request.session.get('pre_2fa_method', 'totp')
+    method = request.session.get("pre_2fa_method", "totp")
     profile = user.profile
     ctx = {
-        'method': method,
-        'masked_email': _mask_email(user.email) if user.email else '',
-        'email_sent': bool(request.session.get('login_email_otp')),
+        "method": method,
+        "masked_email": _mask_email(user.email) if user.email else "",
+        "email_sent": bool(request.session.get("login_email_otp")),
     }
 
-    if request.method == 'POST':
-        action = request.POST.get('action', '')
+    if request.method == "POST":
+        action = request.POST.get("action", "")
 
         # User asked us to (re)send the email code.
-        if action == 'email_send' and method == 'email':
+        if action == "email_send" and method == "email":
             if not user.email:
-                ctx['error'] = 'No email address on file for this account.'
-                return render(request, '2fa_verify.html', ctx)
+                ctx["error"] = "No email address on file for this account."
+                return render(request, "2fa_verify.html", ctx)
             code = f"{random.randint(0, 999999):06d}"
-            request.session['login_email_otp'] = code
-            request.session['login_email_otp_expires'] = int(time.time()) + EMAIL_OTP_TTL_SECONDS
+            request.session["login_email_otp"] = code
+            request.session["login_email_otp_expires"] = int(time.time()) + EMAIL_OTP_TTL_SECONDS
             send_mail(
-                subject='Your BearEstate sign-in code',
+                subject="Your BearEstate sign-in code",
                 message=(
-                    f'Your one-time sign-in code is: {code}\n\n'
-                    f'It expires in {EMAIL_OTP_TTL_SECONDS // 60} minutes.'
+                    f"Your one-time sign-in code is: {code}\n\n" f"It expires in {EMAIL_OTP_TTL_SECONDS // 60} minutes."
                 ),
-                from_email='noreply@bearestate.me',
+                from_email="noreply@bearestate.me",
                 recipient_list=[user.email],
                 fail_silently=False,
             )
-            ctx['email_sent'] = True
-            return render(request, '2fa_verify.html', ctx)
+            ctx["email_sent"] = True
+            return render(request, "2fa_verify.html", ctx)
 
         # Verify TOTP.
-        if method == 'totp':
-            entered = (request.POST.get('otp_code') or '').strip()
-            secret = profile.totp_secret or ''
+        if method == "totp":
+            entered = (request.POST.get("otp_code") or "").strip()
+            secret = profile.totp_secret or ""
             if secret and pyotp.TOTP(secret).verify(entered):
                 _clear_pre_2fa_session(request)
                 login(request, user)
-                return redirect('bear_estate_homepage')
+                return redirect("bear_estate_homepage")
             request._ratelimit_failure = True
-            ctx['error'] = 'Incorrect code. please try again.'
-            return render(request, '2fa_verify.html', ctx)
+            ctx["error"] = "Incorrect code. please try again."
+            return render(request, "2fa_verify.html", ctx)
 
         # Verify email code.
-        if method == 'email':
-            entered = (request.POST.get('email_code') or '').strip()
-            stored = request.session.get('login_email_otp', '')
-            expires_at = request.session.get('login_email_otp_expires', 0)
+        if method == "email":
+            entered = (request.POST.get("email_code") or "").strip()
+            stored = request.session.get("login_email_otp", "")
+            expires_at = request.session.get("login_email_otp_expires", 0)
             now = int(time.time())
 
             if not stored:
                 request._ratelimit_failure = True
-                ctx['error'] = 'No code has been sent yet. Click "Send code".'
-                return render(request, '2fa_verify.html', ctx)
+                ctx["error"] = 'No code has been sent yet. Click "Send code".'
+                return render(request, "2fa_verify.html", ctx)
 
             if now > int(expires_at):
                 # Expired clear it and force resend.
-                request.session.pop('login_email_otp', None)
-                request.session.pop('login_email_otp_expires', None)
+                request.session.pop("login_email_otp", None)
+                request.session.pop("login_email_otp_expires", None)
                 request._ratelimit_failure = True
-                ctx['email_sent'] = False
-                ctx['error'] = 'That code has expired. Please request a new one.'
-                return render(request, '2fa_verify.html', ctx)
+                ctx["email_sent"] = False
+                ctx["error"] = "That code has expired. Please request a new one."
+                return render(request, "2fa_verify.html", ctx)
 
             if entered and entered == stored:
                 _clear_pre_2fa_session(request)
                 login(request, user)
-                return redirect('bear_estate_homepage')
+                return redirect("bear_estate_homepage")
 
             request._ratelimit_failure = True
-            ctx['error'] = 'Incorrect code. please try again.'
-            return render(request, '2fa_verify.html', ctx)
+            ctx["error"] = "Incorrect code. please try again."
+            return render(request, "2fa_verify.html", ctx)
 
-    return render(request, '2fa_verify.html', ctx)
+    return render(request, "2fa_verify.html", ctx)
 
 
 def _mask_email(email):
     """Return a privacy-safe rendering like 'a***@example.com'."""
-    if not email or '@' not in email:
-        return ''
-    local, _, domain = email.partition('@')
+    if not email or "@" not in email:
+        return ""
+    local, _, domain = email.partition("@")
     if len(local) <= 1:
         return f"{local}***@{domain}"
     return f"{local[0]}***@{domain}"
@@ -853,26 +872,31 @@ def _mask_email(email):
 # User Register
 @rate_limit("register", limit=5, window_seconds=60 * 60)  # 5/hour per IP
 def register(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = CustomRegisterForm(request.POST)
 
         if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect('2fa_setup')
+            return redirect("2fa_setup")
         else:
             errors = [error for field in form for error in field.errors]
             errors += list(form.non_field_errors())
 
-            return render(request, 'bear_estate_homepage.html', {
-                'show_signup_modal': True,
-                'register_errors': errors,
-            })
+            return render(
+                request,
+                "bear_estate_homepage.html",
+                {
+                    "show_signup_modal": True,
+                    "register_errors": errors,
+                },
+            )
 
-    return redirect('bear_estate_homepage')
+    return redirect("bear_estate_homepage")
 
 
 # ------------------------------- API views -------------------------------- #
+
 
 class RoommatePostViewSet(viewsets.ModelViewSet):
     serializer_class = RoommatePostSerializer
@@ -881,7 +905,7 @@ class RoommatePostViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = RoommatePost.objects.all()
         # Reads stay open; writes are scoped to the user's own posts.
-        if self.action in ('update', 'partial_update', 'destroy'):
+        if self.action in ("update", "partial_update", "destroy"):
             if self.request.user.is_authenticated:
                 return qs.filter(user=self.request.user)
             return qs.none()
@@ -902,105 +926,101 @@ def setup_2fa(request):
     POST method=email_verify -> confirm emailed code, save email as 2FA method.
     """
     import random
+
     from django.core.mail import send_mail
 
     def _totp_context():
-        secret = request.session.get('totp_secret') or pyotp.random_base32()
-        request.session['totp_secret'] = secret
-        totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(
-            name=request.user.username, issuer_name='BearEstate'
-        )
+        secret = request.session.get("totp_secret") or pyotp.random_base32()
+        request.session["totp_secret"] = secret
+        totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(name=request.user.username, issuer_name="BearEstate")
         qr_img = qrcode.make(totp_uri)
         buf = io.BytesIO()
-        qr_img.save(buf, format='PNG')
+        qr_img.save(buf, format="PNG")
         return {
-            'qr_code': base64.b64encode(buf.getvalue()).decode(),
-            'short_key': ' '.join(secret[i:i+4] for i in range(0, len(secret), 4)),
-            'totp_secret': secret,
+            "qr_code": base64.b64encode(buf.getvalue()).decode(),
+            "short_key": " ".join(secret[i: i + 4] for i in range(0, len(secret), 4)),
+            "totp_secret": secret,
         }
 
-    if request.method == 'POST':
-        method = request.POST.get('method')
+    if request.method == "POST":
+        method = request.POST.get("method")
 
         # TOTP verify
-        if method == 'totp_verify':
-            secret = request.session.get('totp_secret', '')
-            if secret and pyotp.TOTP(secret).verify(request.POST.get('otp_code', '')):
+        if method == "totp_verify":
+            secret = request.session.get("totp_secret", "")
+            if secret and pyotp.TOTP(secret).verify(request.POST.get("otp_code", "")):
                 p = request.user.profile
                 p.totp_secret = secret
                 p.totp_enabled = True
-                p.two_fa_method = 'totp'
+                p.two_fa_method = "totp"
                 p.save()
-                return redirect('bear_estate_homepage')
+                return redirect("bear_estate_homepage")
             request._ratelimit_failure = True
             ctx = _totp_context()
-            ctx['totp_error'] = 'Incorrect code. please try again.'
-            return render(request, '2fa_setup.html', ctx)
+            ctx["totp_error"] = "Incorrect code. please try again."
+            return render(request, "2fa_setup.html", ctx)
 
         # Send code to Email
-        if method == 'email_send':
+        if method == "email_send":
             email = request.user.email
             if not email:
                 ctx = _totp_context()
-                ctx['email_error'] = 'No email address on your account. Please update your profile first.'
-                return render(request, '2fa_setup.html', ctx)
+                ctx["email_error"] = "No email address on your account. Please update your profile first."
+                return render(request, "2fa_setup.html", ctx)
             code = f"{random.randint(0, 999999):06d}"
             # Store the code AND its expiration timestamp so the
             # verify branch below can reject stale codes (5 min TTL).
-            request.session['email_otp'] = code
-            request.session['email_otp_expires'] = int(time.time()) + EMAIL_OTP_TTL_SECONDS
+            request.session["email_otp"] = code
+            request.session["email_otp_expires"] = int(time.time()) + EMAIL_OTP_TTL_SECONDS
             send_mail(
-                subject='Your BearEstate verification code',
-                message=(
-                    f'Your one-time code is: {code}\n\n'
-                    f'It expires in {EMAIL_OTP_TTL_SECONDS // 60} minutes.'
-                ),
-                from_email='noreply@bearestate.me',
+                subject="Your BearEstate verification code",
+                message=(f"Your one-time code is: {code}\n\n" f"It expires in {EMAIL_OTP_TTL_SECONDS // 60} minutes."),
+                from_email="noreply@bearestate.me",
                 recipient_list=[email],
                 fail_silently=False,
             )
             ctx = _totp_context()
-            ctx['email_sent'] = True
-            ctx['email_address'] = email
-            return render(request, '2fa_setup.html', ctx)
+            ctx["email_sent"] = True
+            ctx["email_address"] = email
+            return render(request, "2fa_setup.html", ctx)
 
         # Email Verify
-        if method == 'email_verify':
-            entered = request.POST.get('email_code', '').strip()
-            stored = request.session.get('email_otp', '')
-            expires_at = request.session.get('email_otp_expires', 0)
+        if method == "email_verify":
+            entered = request.POST.get("email_code", "").strip()
+            stored = request.session.get("email_otp", "")
+            expires_at = request.session.get("email_otp_expires", 0)
             now = int(time.time())
 
             if not stored or not expires_at or now > int(expires_at):
                 # Drop the stale code so the next attempt has to
                 # request a fresh one.
-                request.session.pop('email_otp', None)
-                request.session.pop('email_otp_expires', None)
+                request.session.pop("email_otp", None)
+                request.session.pop("email_otp_expires", None)
                 request._ratelimit_failure = True
                 ctx = _totp_context()
-                ctx['email_sent'] = False
-                ctx['email_address'] = request.user.email
-                ctx['email_error'] = 'That code has expired. Please request a new one.'
-                return render(request, '2fa_setup.html', ctx)
+                ctx["email_sent"] = False
+                ctx["email_address"] = request.user.email
+                ctx["email_error"] = "That code has expired. Please request a new one."
+                return render(request, "2fa_setup.html", ctx)
 
             if entered == stored:
                 p = request.user.profile
                 p.totp_enabled = True
-                p.two_fa_method = 'email'
+                p.two_fa_method = "email"
                 p.save()
                 # Single-use: clear the code on success.
-                request.session.pop('email_otp', None)
-                request.session.pop('email_otp_expires', None)
-                return redirect('bear_estate_homepage')
+                request.session.pop("email_otp", None)
+                request.session.pop("email_otp_expires", None)
+                return redirect("bear_estate_homepage")
 
             request._ratelimit_failure = True
             ctx = _totp_context()
-            ctx['email_sent'] = True
-            ctx['email_address'] = request.user.email
-            ctx['email_error'] = 'Incorrect code. please try again.'
-            return render(request, '2fa_setup.html', ctx)
+            ctx["email_sent"] = True
+            ctx["email_address"] = request.user.email
+            ctx["email_error"] = "Incorrect code. please try again."
+            return render(request, "2fa_setup.html", ctx)
 
-    return render(request, '2fa_setup.html', _totp_context())
+    return render(request, "2fa_setup.html", _totp_context())
 
 
 def _recent_history_for(request, limit=5):
@@ -1009,19 +1029,22 @@ def _recent_history_for(request, limit=5):
         qs = SearchHistory.objects.filter(user=request.user)
     elif request.session.session_key:
         qs = SearchHistory.objects.filter(
-            session_key=request.session.session_key, user__isnull=True,
+            session_key=request.session.session_key,
+            user__isnull=True,
         )
     return [h.to_prompt_dict() for h in qs[:limit]]
 
 
-def build_enriched_listings(city, state, listing_type, property_type,
-                            price_range, amenity_filter, keyword):
+def build_enriched_listings(city, state, listing_type, property_type, price_range, amenity_filter, keyword):
     if not (city and state):
         return []
 
     location_str = f"{city}, {state}"
     rentcast_results = fetch_filtered_properties(
-        location_str, listing_type, property_type, price_range,
+        location_str,
+        listing_type,
+        property_type,
+        price_range,
     )
 
     enriched = []
@@ -1038,29 +1061,28 @@ def build_enriched_listings(city, state, listing_type, property_type,
 
         neighborhood, profile = get_neighborhood_profile(city, state, address)
         rent = prop.get("price") or 0
-        enriched.append({
-            'latitude': lat, 'longitude': lng, 'location': address,
-            'property_type': prop.get("propertyType", "Unknown type"),
-            'rent': rent,
-            'beds': prop.get("bedrooms"),
-            'baths': prop.get("bathrooms"),
-            'sqft': prop.get("squareFootage"),
-            'neighborhood': neighborhood,
-            'monthly_utilities': profile["monthly_utilities"],
-            'monthly_services': profile["monthly_services"],
-            'nearby_amenities': profile["nearby_amenities"],
-            'total_monthly_cost': rent + profile["monthly_utilities"]
-                                  + profile["monthly_services"],
-        })
+        enriched.append(
+            {
+                "latitude": lat,
+                "longitude": lng,
+                "location": address,
+                "property_type": prop.get("propertyType", "Unknown type"),
+                "rent": rent,
+                "beds": prop.get("bedrooms"),
+                "baths": prop.get("bathrooms"),
+                "sqft": prop.get("squareFootage"),
+                "neighborhood": neighborhood,
+                "monthly_utilities": profile["monthly_utilities"],
+                "monthly_services": profile["monthly_services"],
+                "nearby_amenities": profile["nearby_amenities"],
+                "total_monthly_cost": rent + profile["monthly_utilities"] + profile["monthly_services"],
+            }
+        )
 
     # Apply amenity filter
     if amenity_filter and amenity_filter.lower() != "any":
         enriched = [
-            p for p in enriched
-            if any(
-                amenity_filter.lower() in a.lower()
-                for a in p.get("nearby_amenities", [])
-            )
+            p for p in enriched if any(amenity_filter.lower() in a.lower() for a in p.get("nearby_amenities", []))
         ]
 
     # Apply keyword filter
@@ -1082,36 +1104,52 @@ def build_enriched_listings(city, state, listing_type, property_type,
 
 def ai_listing_agent_view(request):
     if not request.user.is_authenticated:
-        return JsonResponse({
-            'ok': False,
-            'error': 'Sign in to unlock AI-curated listings based on your search history.',
-            'summary': '', 'advice': '', 'picks': [],
-        })
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Sign in to unlock AI-curated listings based on your search history.",
+                "summary": "",
+                "advice": "",
+                "picks": [],
+            }
+        )
 
-    city = request.GET.get('city', '').strip().title()
-    state = request.GET.get('state', '').strip().upper()
-    listing_type = request.GET.get('intent', '').strip()
-    property_type = request.GET.get('type', '').strip()
-    price_range = request.GET.get('budget', '').strip()
-    amenity_filter = request.GET.get('amenity', '').strip()
-    keyword = request.GET.get('keyword', '').strip()
+    city = request.GET.get("city", "").strip().title()
+    state = request.GET.get("state", "").strip().upper()
+    listing_type = request.GET.get("intent", "").strip()
+    property_type = request.GET.get("type", "").strip()
+    price_range = request.GET.get("budget", "").strip()
+    amenity_filter = request.GET.get("amenity", "").strip()
+    keyword = request.GET.get("keyword", "").strip()
 
     if not (city and state):
-        return JsonResponse({
-            'ok': False,
-            'error': 'Please run a property search first.',
-            'summary': '', 'advice': '', 'picks': [],
-        })
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "Please run a property search first.",
+                "summary": "",
+                "advice": "",
+                "picks": [],
+            }
+        )
 
     enriched = build_enriched_listings(
-        city, state, listing_type, property_type,
-        price_range, amenity_filter, keyword,
+        city,
+        state,
+        listing_type,
+        property_type,
+        price_range,
+        amenity_filter,
+        keyword,
     )
 
     preferences = {
-        "city": city, "state": state,
-        "listing_type": listing_type, "property_type": property_type,
-        "budget": price_range, "amenity": amenity_filter,
+        "city": city,
+        "state": state,
+        "listing_type": listing_type,
+        "property_type": property_type,
+        "budget": price_range,
+        "amenity": amenity_filter,
         "keyword": keyword,
     }
     history = _recent_history_for(request, limit=5)
@@ -1135,10 +1173,12 @@ def ai_listing_agent_view(request):
         for p in result["picks"]
     ]
 
-    return JsonResponse({
-        "ok": result["ok"],
-        "summary": result["summary"],
-        "advice": result["advice"],
-        "error": result["error"],
-        "picks": picks_out,
-    })
+    return JsonResponse(
+        {
+            "ok": result["ok"],
+            "summary": result["summary"],
+            "advice": result["advice"],
+            "error": result["error"],
+            "picks": picks_out,
+        }
+    )

@@ -9,7 +9,6 @@ from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpResponse
 
-
 # How long (in seconds) the email-2FA one-time code stays valid.
 # Used by both the setup flow and the login challenge flow.
 EMAIL_OTP_TTL_SECONDS = 5 * 60  # 5 minutes
@@ -65,8 +64,7 @@ def rate_limit(
             if count >= limit:
                 retry_after = int(window_seconds - (now - start))
                 resp = HttpResponse(
-                    "Too many attempts. Please slow down and try again "
-                    f"in {max(retry_after, 1)} seconds.",
+                    "Too many attempts. Please slow down and try again " f"in {max(retry_after, 1)} seconds.",
                     status=429,
                 )
                 resp["Retry-After"] = str(max(retry_after, 1))
