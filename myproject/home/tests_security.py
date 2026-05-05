@@ -1,21 +1,18 @@
 """
-  Tests for 2FA, rate limiting, Missing security flags, Email OTP expiration, Anonymous WebSocket Access to Private Chats,
-  IDOR- Unauthorized Access to Any Chat Room and Stored XSS via WebSocket innerHTML
+Tests for 2FA, rate limiting, Missing security flags, Email OTP expiration, Anonymous WebSocket Access to Private Chats,
+IDOR- Unauthorized Access to Any Chat Room and Stored XSS via WebSocket innerHTML
 """
-
 
 import time
 
+import pyotp
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import TestCase, override_settings
-from django.urls import reverse
-
-import pyotp
-
 
 # 2FA
+
 
 @override_settings(RATE_LIMIT_DISABLED=True)
 class TwoFactorEnforcedAtLoginTests(TestCase):
@@ -47,10 +44,13 @@ class TwoFactorEnforcedAtLoginTests(TestCase):
     def test_password_alone_does_not_log_user_in_when_totp_enabled(self):
         """Submitting username+password for a 2FA user must NOT establish
         an authenticated session."""
-        response = self.client.post("/", {
-            "username": "totp_user",
-            "password": self.password,
-        })
+        response = self.client.post(
+            "/",
+            {
+                "username": "totp_user",
+                "password": self.password,
+            },
+        )
         # We expect a redirect to the 2FA challenge.
         self.assertEqual(response.status_code, 302)
         self.assertIn("/auth/2fa/verify/", response["Location"])
@@ -67,21 +67,25 @@ class TwoFactorEnforcedAtLoginTests(TestCase):
         """Once the user supplies the correct TOTP code on the verify
         page, login() runs and the session becomes authenticated."""
         # password.
-        self.client.post("/", {
-            "username": "totp_user",
-            "password": self.password,
-        })
+        self.client.post(
+            "/",
+            {
+                "username": "totp_user",
+                "password": self.password,
+            },
+        )
         # correct TOTP.
         valid_code = pyotp.TOTP(self.totp_secret).now()
-        response = self.client.post("/auth/2fa/verify/", {
-            "otp_code": valid_code,
-        })
+        response = self.client.post(
+            "/auth/2fa/verify/",
+            {
+                "otp_code": valid_code,
+            },
+        )
         self.assertEqual(response.status_code, 302)
         # logged in
         self.assertIn("_auth_user_id", self.client.session)
-        self.assertEqual(
-            int(self.client.session["_auth_user_id"]), self.user.id
-        )
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.id)
 
 
 # Rate Limiting Fix
@@ -96,29 +100,30 @@ class LoginRateLimitTests(TestCase):
         cache.clear()
         # A real user so we can confirm the limiter only counts FAILURES
         # (success path shouldn't burn the budget).
-        User.objects.create_user(
-            username="real_user", password="StrongPassword@123"
-        )
+        User.objects.create_user(username="real_user", password="StrongPassword@123")
 
     def test_repeated_failed_logins_get_blocked_with_429(self):
         """6 wrong-password attempts in a row from the same IP —
         the 6th must be rejected with HTTP 429 instead of the normal
         200 error page. Limit is 5 per 5-minute window."""
         for i in range(5):
-            r = self.client.post("/", {
-                "username": "real_user",
-                "password": "wrong_password",
-            })
-            self.assertEqual(
-                r.status_code, 200,
-                f"attempt {i+1} should still be allowed but got {r.status_code}"
+            r = self.client.post(
+                "/",
+                {
+                    "username": "real_user",
+                    "password": "wrong_password",
+                },
             )
+            self.assertEqual(r.status_code, 200, f"attempt {i + 1} should still be allowed but got {r.status_code}")
 
         # 6th attempt
-        blocked = self.client.post("/", {
-            "username": "real_user",
-            "password": "wrong_password",
-        })
+        blocked = self.client.post(
+            "/",
+            {
+                "username": "real_user",
+                "password": "wrong_password",
+            },
+        )
         self.assertEqual(blocked.status_code, 429)
         # And the limiter advertises Retry-After so clients can back off.
         self.assertIn("Retry-After", blocked)
@@ -129,26 +134,34 @@ class LoginRateLimitTests(TestCase):
         force target, so urls.py wraps admin.site.login with the same
         rate_limit decorator. 6th POST should be 429."""
         for i in range(5):
-            r = self.client.post("/admin/login/", {
+            r = self.client.post(
+                "/admin/login/",
+                {
+                    "username": "admin_brute",
+                    "password": "wrong",
+                    "next": "/admin/",
+                },
+            )
+
+            self.assertNotEqual(
+                r.status_code,
+                429,
+                f"attempt {i + 1} should still be allowed",
+            )
+
+        blocked = self.client.post(
+            "/admin/login/",
+            {
                 "username": "admin_brute",
                 "password": "wrong",
                 "next": "/admin/",
-            })
-        
-            self.assertNotEqual(
-                r.status_code, 429,
-                f"attempt {i+1} should still be allowed",
-            )
-
-        blocked = self.client.post("/admin/login/", {
-            "username": "admin_brute",
-            "password": "wrong",
-            "next": "/admin/",
-        })
+            },
+        )
         self.assertEqual(blocked.status_code, 429)
 
 
 # Security Settings Fix
+
 
 @override_settings(RATE_LIMIT_DISABLED=True)
 class SecuritySettingsTests(TestCase):
@@ -190,6 +203,7 @@ class SecuritySettingsTests(TestCase):
         block works by reloading settings with DEBUG=False env."""
         import importlib
         import os
+
         import myproject.settings as project_settings
 
         original_debug = os.environ.get("DEBUG")
@@ -204,7 +218,8 @@ class SecuritySettingsTests(TestCase):
             self.assertTrue(project_settings.CSRF_COOKIE_SECURE)
             self.assertTrue(project_settings.SECURE_SSL_REDIRECT)
             self.assertGreaterEqual(
-                project_settings.SECURE_HSTS_SECONDS, 60 * 60 * 24 * 30,
+                project_settings.SECURE_HSTS_SECONDS,
+                60 * 60 * 24 * 30,
                 "HSTS must be at least 30 days in production",
             )
             self.assertTrue(project_settings.SECURE_HSTS_INCLUDE_SUBDOMAINS)
@@ -224,18 +239,20 @@ class SecuritySettingsTests(TestCase):
 
     def test_secret_key_has_no_predictable_fallback(self):
         from pathlib import Path
+
         import myproject.settings as project_settings
+
         src = Path(project_settings.__file__).read_text()
         self.assertNotIn(
-            "test-secret-key", src,
-            "settings.py still references 'test-secret-key'. The "
-            "predictable fallback hasn't been removed.",
+            "test-secret-key",
+            src,
+            "settings.py still references 'test-secret-key'. The " "predictable fallback hasn't been removed.",
         )
-
 
         self.assertNotEqual(settings.SECRET_KEY, "test-secret-key")
         self.assertGreaterEqual(
-            len(settings.SECRET_KEY), 32,
+            len(settings.SECRET_KEY),
+            32,
             "SECRET_KEY is suspiciously short. Likely still a "
             "hardcoded fallback rather than a generated/env-supplied key.",
         )
@@ -251,6 +268,7 @@ class EmailOTPExpirationTests(TestCase):
     (5-minute TTL). The verify branch rejects expired or unexpiring
     codes.
     """
+
     def setUp(self):
         cache.clear()
         self.user = User.objects.create_user(
@@ -269,10 +287,13 @@ class EmailOTPExpirationTests(TestCase):
         session["email_otp_expires"] = int(time.time()) - 1
         session.save()
 
-        response = self.client.post("/auth/2fa/setup/", {
-            "method": "email_verify",
-            "email_code": "111222",
-        })
+        response = self.client.post(
+            "/auth/2fa/setup/",
+            {
+                "method": "email_verify",
+                "email_code": "111222",
+            },
+        )
 
         # Should re-render the page (200), NOT redirect (302) on success.
         self.assertEqual(response.status_code, 200)
@@ -281,15 +302,12 @@ class EmailOTPExpirationTests(TestCase):
         self.assertNotEqual(profile.two_fa_method, "email")
         self.assertFalse(profile.totp_enabled)
 
-
         self.assertNotIn("email_otp", self.client.session)
 
     def test_email_send_records_an_expiration_timestamp(self):
 
         before = int(time.time())
-        response = self.client.post(
-            "/auth/2fa/setup/", {"method": "email_send"}
-        )
+        response = self.client.post("/auth/2fa/setup/", {"method": "email_send"})
         after = int(time.time())
 
         self.assertEqual(response.status_code, 200)
@@ -303,6 +321,7 @@ class EmailOTPExpirationTests(TestCase):
         self.assertGreaterEqual(ttl, 60)
         self.assertLessEqual(ttl, 15 * 60)
 
+
 @override_settings(
     RATE_LIMIT_DISABLED=True,
     CHANNEL_LAYERS={"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}},
@@ -311,15 +330,10 @@ class ChatWebSocketSecurityTests(TestCase):
     def setUp(self):
         cache.clear()
         from home.models import RoommatePost
-        self.owner = User.objects.create_user(
-            username="post_owner", password="StrongPassword@123"
-        )
-        self.inquirer = User.objects.create_user(
-            username="post_inquirer", password="StrongPassword@123"
-        )
-        self.outsider = User.objects.create_user(
-            username="random_outsider", password="StrongPassword@123"
-        )
+
+        self.owner = User.objects.create_user(username="post_owner", password="StrongPassword@123")
+        self.inquirer = User.objects.create_user(username="post_inquirer", password="StrongPassword@123")
+        self.outsider = User.objects.create_user(username="random_outsider", password="StrongPassword@123")
         self.post = RoommatePost.objects.create(
             user=self.owner,
             message="Need a roommate.",
@@ -330,14 +344,12 @@ class ChatWebSocketSecurityTests(TestCase):
         )
 
     def _build_communicator(self, user):
-        from channels.testing import WebsocketCommunicator
-        from channels.routing import URLRouter
         import chat.routing
+        from channels.routing import URLRouter
+        from channels.testing import WebsocketCommunicator
 
         app = URLRouter(chat.routing.websocket_urlpatterns)
-        comm = WebsocketCommunicator(
-            app, f"/ws/chat/{self.post.id}/{self.inquirer.id}/"
-        )
+        comm = WebsocketCommunicator(app, f"/ws/chat/{self.post.id}/{self.inquirer.id}/")
         comm.scope["user"] = user
         return comm
 
@@ -346,9 +358,9 @@ class ChatWebSocketSecurityTests(TestCase):
         """An AnonymousUser must not be able to connect to the chat
         WebSocket. The consumer should close with code 4003 and no
         Message rows should be created during the attempted handshake."""
-        from django.contrib.auth.models import AnonymousUser
         from asgiref.sync import async_to_sync
         from chat.models import Message
+        from django.contrib.auth.models import AnonymousUser
 
         async def body():
             comm = self._build_communicator(AnonymousUser())
@@ -361,9 +373,7 @@ class ChatWebSocketSecurityTests(TestCase):
             await comm.disconnect()
 
         async_to_sync(body)()
-        self.assertEqual(
-            Message.objects.filter(posting_id=self.post.id).count(), 0
-        )
+        self.assertEqual(Message.objects.filter(posting_id=self.post.id).count(), 0)
 
     # Cross-User WebSocket Access (logged in but not owner/not inquirer)
     def test_logged_in_outsider_cannot_open_chat_websocket(self):
@@ -385,41 +395,34 @@ class ChatWebSocketSecurityTests(TestCase):
 
     # Stored XSS via WebSocket innerHTML
     def test_chat_room_template_does_not_render_messages_via_innerHTML(self):
-        """Regression test for the stored XSS fix in chat_room.html.
-        """
+        """Regression test for the stored XSS fix in chat_room.html."""
         import re
-        self.client.login(
-            username="post_owner", password="StrongPassword@123"
-        )
-        response = self.client.get(
-            f"/chat/{self.post.id}/{self.inquirer.id}/"
-        )
+
+        self.client.login(username="post_owner", password="StrongPassword@123")
+        response = self.client.get(f"/chat/{self.post.id}/{self.inquirer.id}/")
         self.assertEqual(response.status_code, 200)
         body = response.content.decode()
 
         # Safe pattern is in place: textContent is used for socket data.
         self.assertIn(
-            "textContent = message", body,
-            "chat_room.html should assign incoming message via "
-            "element.textContent (XSS-safe), not innerHTML.",
+            "textContent = message",
+            body,
+            "chat_room.html should assign incoming message via " "element.textContent (XSS-safe), not innerHTML.",
         )
         self.assertIn(
-            "textContent = sender", body,
-            "chat_room.html should assign sender label via "
-            "element.textContent (XSS-safe), not innerHTML.",
+            "textContent = sender",
+            body,
+            "chat_room.html should assign sender label via " "element.textContent (XSS-safe), not innerHTML.",
         )
 
         # No innerHTML write that interpolates a socket-supplied field.
-        socket_fields = ("data.message", "data.sender",
-                         "data.user_message", "data.bot_reply",
-                         "message}", "sender}")
-        innerhtml_writes = re.findall(
-            r"innerHTML\s*[+]?=\s*[`'\"][^`'\"]*[`'\"]", body
-        )
+        socket_fields = ("data.message", "data.sender", "data.user_message", "data.bot_reply", "message}", "sender}")
+        innerhtml_writes = re.findall(r"innerHTML\s*[+]?=\s*[`'\"][^`'\"]*[`'\"]", body)
         for snippet in innerhtml_writes:
             for field in socket_fields:
                 self.assertNotIn(
-                    field, snippet,
+                    field,
+                    snippet,
                     f"chat_room.html still writes WebSocket-supplied "
                     f"field into innerHTML — stored XSS regression. "
                     f"Offending snippet: {snippet!r}",

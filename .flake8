@@ -14,3 +14,4 @@ exclude =
 #ignore comment-spacing because this repo uses comment styling without a space after the hash
 ignore =
     E265
+    W504

@@ -1,5 +1,6 @@
-import requests
 import os
+
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -8,11 +9,12 @@ API_KEY = os.getenv("RENTCAST_API_KEY")
 
 # Rentcast's expected property type values
 PROPERTY_TYPE_MAP = {
-    'apartment': 'Apartment',
-    'house': 'Single Family',
-    'condo': 'Condo',
-    'townhouse': 'Townhouse',
+    "apartment": "Apartment",
+    "house": "Single Family",
+    "condo": "Condo",
+    "townhouse": "Townhouse",
 }
+
 
 def get_properties(location, property_type=None, min_price=None, max_price=None):
     if not API_KEY:
@@ -40,7 +42,7 @@ def get_properties(location, property_type=None, min_price=None, max_price=None)
             params["propertyType"] = rentcast_type
 
     response = requests.get(url, headers=headers, params=params)
-    
+
     # for debugging
     print("Rentcast status:", response.status_code)
     print("Rentcast response:", response.text[:300])
