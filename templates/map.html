@@ -779,7 +779,7 @@
                 if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
                     return;
                 }
-                
+                {{ amenity_filter|default:''|json_script:"filter-amenity"}}
                 const selectedAmenity = getFilterVal("filter-amenity");
 
                 const allAmenities = Array.isArray(loc.nearby_amenities)
