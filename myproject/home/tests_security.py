@@ -1,6 +1,8 @@
 """
-  Tests for 2FA, rate limiting, Missing security flags, Email OTP expiration 
+  Tests for 2FA, rate limiting, Missing security flags, Email OTP expiration, Anonymous WebSocket Access to Private Chats,
+  IDOR- Unauthorized Access to Any Chat Room and Stored XSS via WebSocket innerHTML
 """
+
 
 import time
 
@@ -296,7 +298,129 @@ class EmailOTPExpirationTests(TestCase):
 
         expires = int(self.client.session["email_otp_expires"])
         ttl = expires - before
-        # Must be in the future, and a sensible window (1 - 15 min).
+        # Must be in the future, and a sensible window.
         self.assertGreater(expires, after)
         self.assertGreaterEqual(ttl, 60)
         self.assertLessEqual(ttl, 15 * 60)
+
+@override_settings(
+    RATE_LIMIT_DISABLED=True,
+    CHANNEL_LAYERS={"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}},
+)
+class ChatWebSocketSecurityTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        from home.models import RoommatePost
+        self.owner = User.objects.create_user(
+            username="post_owner", password="StrongPassword@123"
+        )
+        self.inquirer = User.objects.create_user(
+            username="post_inquirer", password="StrongPassword@123"
+        )
+        self.outsider = User.objects.create_user(
+            username="random_outsider", password="StrongPassword@123"
+        )
+        self.post = RoommatePost.objects.create(
+            user=self.owner,
+            message="Need a roommate.",
+            date="2026-03-11",
+            status="open",
+            rent=1000,
+            property_type="apartment",
+        )
+
+    def _build_communicator(self, user):
+        from channels.testing import WebsocketCommunicator
+        from channels.routing import URLRouter
+        import chat.routing
+
+        app = URLRouter(chat.routing.websocket_urlpatterns)
+        comm = WebsocketCommunicator(
+            app, f"/ws/chat/{self.post.id}/{self.inquirer.id}/"
+        )
+        comm.scope["user"] = user
+        return comm
+
+    # Anonymous WebSocket Access
+    def test_anonymous_user_cannot_open_chat_websocket(self):
+        """An AnonymousUser must not be able to connect to the chat
+        WebSocket. The consumer should close with code 4003 and no
+        Message rows should be created during the attempted handshake."""
+        from django.contrib.auth.models import AnonymousUser
+        from asgiref.sync import async_to_sync
+        from chat.models import Message
+
+        async def body():
+            comm = self._build_communicator(AnonymousUser())
+            connected, close_code = await comm.connect()
+            self.assertFalse(
+                connected,
+                "Anonymous user should not be able to connect to chat WS",
+            )
+            self.assertEqual(close_code, 4003)
+            await comm.disconnect()
+
+        async_to_sync(body)()
+        self.assertEqual(
+            Message.objects.filter(posting_id=self.post.id).count(), 0
+        )
+
+    # Cross-User WebSocket Access (logged in but not owner/not inquirer)
+    def test_logged_in_outsider_cannot_open_chat_websocket(self):
+        """A logged-in user who is neither the posting owner nor the
+        designated inquirer must be rejected with code 4003"""
+        from asgiref.sync import async_to_sync
+
+        async def body():
+            comm = self._build_communicator(self.outsider)
+            connected, close_code = await comm.connect()
+            self.assertFalse(
+                connected,
+                "Outsider (not owner, not inquirer) should be rejected",
+            )
+            self.assertEqual(close_code, 4003)
+            await comm.disconnect()
+
+        async_to_sync(body)()
+
+    # Stored XSS via WebSocket innerHTML
+    def test_chat_room_template_does_not_render_messages_via_innerHTML(self):
+        """Regression test for the stored XSS fix in chat_room.html.
+        """
+        import re
+        self.client.login(
+            username="post_owner", password="StrongPassword@123"
+        )
+        response = self.client.get(
+            f"/chat/{self.post.id}/{self.inquirer.id}/"
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode()
+
+        # Safe pattern is in place: textContent is used for socket data.
+        self.assertIn(
+            "textContent = message", body,
+            "chat_room.html should assign incoming message via "
+            "element.textContent (XSS-safe), not innerHTML.",
+        )
+        self.assertIn(
+            "textContent = sender", body,
+            "chat_room.html should assign sender label via "
+            "element.textContent (XSS-safe), not innerHTML.",
+        )
+
+        # No innerHTML write that interpolates a socket-supplied field.
+        socket_fields = ("data.message", "data.sender",
+                         "data.user_message", "data.bot_reply",
+                         "message}", "sender}")
+        innerhtml_writes = re.findall(
+            r"innerHTML\s*[+]?=\s*[`'\"][^`'\"]*[`'\"]", body
+        )
+        for snippet in innerhtml_writes:
+            for field in socket_fields:
+                self.assertNotIn(
+                    field, snippet,
+                    f"chat_room.html still writes WebSocket-supplied "
+                    f"field into innerHTML — stored XSS regression. "
+                    f"Offending snippet: {snippet!r}",
+                )

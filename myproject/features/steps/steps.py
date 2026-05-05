@@ -189,13 +189,17 @@ def step_map_200(context):
 # Then Statement
 @then('the map context has at least 1 property')
 def step_map_has_properties(context):
-    data = json.loads(context.response.context['properties'])
+    data = context.response.context['properties']
+    if isinstance(data, str):
+        data = json.loads(data)
     assert len(data) >= 1, f"Expected >= 1 property, got {len(data)}"
 
 # Then Statement
 @then('the map context has 0 properties')
 def step_map_has_no_properties(context):
-    data = json.loads(context.response.context['properties'])
+    data = context.response.context['properties']
+    if isinstance(data, str):
+        data = json.loads(data)
     assert len(data) == 0, f"Expected 0 properties, got {len(data)}"
 
 
@@ -379,7 +383,9 @@ def step_local_property_with_coords(context):
 @then('every property in the map context has coordinates')
 def step_all_have_coords(context):
     import json
-    data = json.loads(context.response.context['properties'])
+    data = context.response.context['properties']
+    if isinstance(data, str):
+        data = json.loads(data)
     assert len(data) > 0, "No properties in map context"
     for prop in data:
         assert 'latitude' in prop, f"Missing latitude: {prop}"
@@ -497,4 +503,76 @@ def step_ai_pick_contains(context, needle):
     picks = data.get('picks', [])
     assert any(needle in p.get('address', '') for p in picks), (
         f'No pick address contained "{needle}". Picks: {picks}'
+    )
+
+
+
+# Street View Deeplink
+# Then Statement
+@then('the map page contains the Street View deeplink template')
+def step_map_has_street_view_template(context):
+    body = context.response.content.decode()
+    assert 'maps/@?api=1&map_action=pano' in body, (
+        "Expected Street View deeplink template "
+        "'maps/@?api=1&map_action=pano' in map page HTML"
+    )
+
+
+
+# Agent Advertising
+# When Statement
+@when('I open the agent ad create page')
+def step_open_agent_ad_create(context):
+    context.response = context.test.client.get('/agents/ads/create/')
+
+# Then Statement
+@then('the page returns {code:d}')
+def step_page_returns_code(context, code):
+    assert context.response.status_code == code, (
+        f"Expected {code}, got {context.response.status_code}"
+    )
+
+# Given Statement
+@given('a verified agent "{username}" with a complete active ad in "{city}, {state}"')
+def step_verified_agent_with_ad(context, username, city, state):
+    from home.models import AgentAd
+    user, _ = User.objects.get_or_create(username=username)
+    user.set_password('Password123!')
+    user.email = f'{username}@example.com'
+    user.save()
+    user.profile.is_agent_verified = True
+    user.profile.save()
+    context.ad = AgentAd.objects.create(
+        agent=user,
+        headline='Top-rated agent for your next home',
+        city=city,
+        state=state,
+        brokerage='BearEstate Realty',
+        license_number='CO-12345',
+        phone='555-0100',
+        email=user.email,
+        bio='Helping buyers and renters find the right place since 2018.',
+        specialties='First-time buyers, rentals',
+        active=True,
+    )
+    context.user = user
+
+# When Statement
+@when('I open the agent profile page for that ad')
+def step_open_agent_profile(context):
+    context.response = context.test.client.get(f'/agents/{context.ad.id}/')
+
+# Then Statement
+@then('the profile page returns {code:d}')
+def step_profile_returns(context, code):
+    assert context.response.status_code == code, (
+        f"Expected {code}, got {context.response.status_code}"
+    )
+
+# Then Statement
+@then("the profile page shows the agent's headline")
+def step_profile_shows_headline(context):
+    body = context.response.content.decode()
+    assert context.ad.headline in body, (
+        f'Expected headline "{context.ad.headline}" in profile page HTML'
     )

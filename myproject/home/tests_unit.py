@@ -1326,8 +1326,7 @@ class GuardrailConsumerTests(TransactionTestCase):
                 self.assertEqual(blocked["type"], "system_message")
                 self.assertEqual(blocked["reason"], "off_topic")
 
-                # No 'thinking' frame, no assistant_message — the LLM was
-                # never called.
+            
                 self.assertTrue(await communicator.receive_nothing(timeout=0.3))
                 mock_chat.assert_not_called()
                 await communicator.disconnect()
