@@ -197,6 +197,16 @@ class MassAssignmentInREST(TestCase):
 
         self.assertIn(response.status_code, [401, 403])
         self.assertEqual(self.roommate_post.message, "Initial")
+
+    def test_attacker_cannot_modify_or_delete_victims_post(self):
+        victim = User.objects.create_user("victim", password="pw")
+        victim_post = RoommatePost.objects.create(user=victim, message="x", date="2026-01-01")
+        self.client.force_login(self.user)  # attacker
+        r1 = self.client.patch(f"/roommate-posts/api/{victim_post.id}/", {"message": "h"}, content_type="application/json")
+        r2 = self.client.delete(f"/roommate-posts/api/{victim_post.id}/")
+        self.assertIn(r1.status_code, (403, 404))
+        self.assertIn(r2.status_code, (403, 404))
+        self.assertTrue(RoommatePost.objects.filter(id=victim_post.id, message="x").exists())
 # END OF test 6
 
 # 9

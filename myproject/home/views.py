@@ -295,7 +295,12 @@ def agent_ad_deactivate(request, ad_id):
 
     return redirect('agent_ad_list')
 
-
+@rate_limit(
+    "agent_inquiry",
+    limit=5,
+    window_seconds=300,
+    key_extra=lambda req: req.resolver_match.kwargs.get("ad_id", ""),
+)
 def agent_profile(request, ad_id):
     ad = get_object_or_404(AgentAd, pk=ad_id, active=True)
 
@@ -870,19 +875,20 @@ def register(request):
 # ------------------------------- API views -------------------------------- #
 
 class RoommatePostViewSet(viewsets.ModelViewSet):
-    """
-    Receives all roommate post objects and returns JSON via serializer.
-    """
-    queryset = RoommatePost.objects.all()
     serializer_class = RoommatePostSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
+    def get_queryset(self):
+        qs = RoommatePost.objects.all()
+        # Reads stay open; writes are scoped to the user's own posts.
+        if self.action in ('update', 'partial_update', 'destroy'):
+            if self.request.user.is_authenticated:
+                return qs.filter(user=self.request.user)
+            return qs.none()
+        return qs
 
     def perform_create(self, serializer):
-        serializer.save(
-            user=self.request.user,
-            date=timezone.localdate(),
-     )
+        serializer.save(user=self.request.user, date=timezone.localdate())
 
 
 # Two-Factor Auth
