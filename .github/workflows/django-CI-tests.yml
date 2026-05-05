@@ -62,6 +62,7 @@ jobs:
         env:
           RENTCAST_API_KEY: dummy-test-key
           DJANGO_SECRET_KEY: dummy-django-key-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          DEBUG: "True"
         run: |
           cd myproject
           coverage run --source='.' manage.py test
