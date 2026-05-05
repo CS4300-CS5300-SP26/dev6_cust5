@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BearEstate — Verify it's you</title>
+    <title>BearEstate: Verify it's you</title>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <style>
@@ -51,7 +51,7 @@
                 <button type="submit" class="btn btn-full">Send code →</button>
             </form>
         {% else %}
-            <div class="notice">✉️  Code sent. It expires in 5 minutes — check your inbox.</div>
+            <div class="notice">✉️  Code sent. It expires in 5 minutes! check your inbox.</div>
             <form method="post" action="{% url '2fa_verify_login' %}">
                 {% csrf_token %}
                 <div class="otp-row">

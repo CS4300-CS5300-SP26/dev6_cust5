@@ -121,8 +121,6 @@ class RoommatePostFlowIntegrationTest(TestCase):
 
 
 # Map Search Integration
-# (replaces old PropertySearchIntegrationTest — filtering now lives on
-#  /map/ and is backed by the Rentcast API, not local DB text search)
 class MapSearchIntegrationTest(TestCase):
     """Full map-search flow: submit city/state -> API called -> markers rendered."""
 

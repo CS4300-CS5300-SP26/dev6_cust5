@@ -637,10 +637,6 @@ def index(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            # Check whether this user has a second factor configured.
-            # If so, do NOT call login() yet — that would bypass 2FA.
-            # Instead, stash the user id in the session and redirect to
-            # the 2FA challenge page.
             profile = getattr(user, 'profile', None)
             if profile and profile.totp_enabled and profile.two_fa_method in ('totp', 'email'):
                 # Pre-auth state: user proved the password but is not
@@ -657,7 +653,6 @@ def index(request):
             login(request, user)
             return redirect('bear_estate_homepage')
         else:
-            # Failed login — flag the request so the rate limiter
             # counts this attempt.
             request._ratelimit_failure = True
             context['login_error'] = 'Invalid username or password.'
@@ -761,7 +756,6 @@ def verify_2fa_login(request):
 
     user = _get_pre_2fa_user(request)
     if user is None:
-        # No valid pre-auth state — bounce back to login.
         return redirect('bear_estate_homepage')
 
     method = request.session.get('pre_2fa_method', 'totp')
@@ -805,7 +799,7 @@ def verify_2fa_login(request):
                 login(request, user)
                 return redirect('bear_estate_homepage')
             request._ratelimit_failure = True
-            ctx['error'] = 'Incorrect code — please try again.'
+            ctx['error'] = 'Incorrect code. please try again.'
             return render(request, '2fa_verify.html', ctx)
 
         # Verify email code.
@@ -821,7 +815,7 @@ def verify_2fa_login(request):
                 return render(request, '2fa_verify.html', ctx)
 
             if now > int(expires_at):
-                # Expired — clear it and force resend.
+                # Expired clear it and force resend.
                 request.session.pop('login_email_otp', None)
                 request.session.pop('login_email_otp_expires', None)
                 request._ratelimit_failure = True
@@ -835,7 +829,7 @@ def verify_2fa_login(request):
                 return redirect('bear_estate_homepage')
 
             request._ratelimit_failure = True
-            ctx['error'] = 'Incorrect code — please try again.'
+            ctx['error'] = 'Incorrect code. please try again.'
             return render(request, '2fa_verify.html', ctx)
 
     return render(request, '2fa_verify.html', ctx)
@@ -934,7 +928,7 @@ def setup_2fa(request):
                 return redirect('bear_estate_homepage')
             request._ratelimit_failure = True
             ctx = _totp_context()
-            ctx['totp_error'] = 'Incorrect code — please try again.'
+            ctx['totp_error'] = 'Incorrect code. please try again.'
             return render(request, '2fa_setup.html', ctx)
 
         # Send code to Email
@@ -971,9 +965,6 @@ def setup_2fa(request):
             expires_at = request.session.get('email_otp_expires', 0)
             now = int(time.time())
 
-            # Reject expired codes. Also reject codes that have no
-            # expiration recorded — those are either stale legacy
-            # state from before this fix, or session-tampering.
             if not stored or not expires_at or now > int(expires_at):
                 # Drop the stale code so the next attempt has to
                 # request a fresh one.
@@ -1000,7 +991,7 @@ def setup_2fa(request):
             ctx = _totp_context()
             ctx['email_sent'] = True
             ctx['email_address'] = request.user.email
-            ctx['email_error'] = 'Incorrect code — please try again.'
+            ctx['email_error'] = 'Incorrect code. please try again.'
             return render(request, '2fa_setup.html', ctx)
 
     return render(request, '2fa_setup.html', _totp_context())

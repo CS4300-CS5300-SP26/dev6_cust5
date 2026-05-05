@@ -226,7 +226,7 @@ class SecuritySettingsTests(TestCase):
         src = Path(project_settings.__file__).read_text()
         self.assertNotIn(
             "test-secret-key", src,
-            "settings.py still references 'test-secret-key' — the "
+            "settings.py still references 'test-secret-key'. The "
             "predictable fallback hasn't been removed.",
         )
 
@@ -234,7 +234,7 @@ class SecuritySettingsTests(TestCase):
         self.assertNotEqual(settings.SECRET_KEY, "test-secret-key")
         self.assertGreaterEqual(
             len(settings.SECRET_KEY), 32,
-            "SECRET_KEY is suspiciously short — likely still a "
+            "SECRET_KEY is suspiciously short. Likely still a "
             "hardcoded fallback rather than a generated/env-supplied key.",
         )
 

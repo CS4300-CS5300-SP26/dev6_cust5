@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BearEstate — Secure Your Account</title>
+    <title>BearEstate - Secure Your Account</title>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <style>
@@ -133,7 +133,7 @@
                     {% else %}
                     <div class="email-sent-notice">
                         <span class="icon">✉️</span>
-                        Code sent to <b>{{ email_address }}</b> — check your inbox.
+                        Code sent to <b>{{ email_address }}</b> - check your inbox.
                     </div>
                     {% endif %}
                     {% if email_error %}<p class="error">{{ email_error }}</p>{% endif %}
@@ -167,7 +167,7 @@
         </div>
     </div>
 
-    <span class="skip">Not now? <a href="{% url 'bear_estate_homepage' %}">Skip for now</a> — you can enable this later in account settings.</span>
+    <span class="skip">Not now? <a href="{% url 'bear_estate_homepage' %}">Skip for now</a>: you can enable this later in account settings.</span>
 </div>
 
 <script>
