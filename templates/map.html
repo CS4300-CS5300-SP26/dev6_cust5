@@ -560,16 +560,6 @@
                 </form>
             </div>
 
-            <!-- Json script tags-->
-            {{ amenity_filter|default:''|json_script:"filter-amenity" }}
-            {{ properties|json_script:"map-properties-data" }}
-            {{ city|default:''|json_script:"filter-city" }}
-            {{ state|default:''|json_script:"filter-state" }}
-            {{ listing_type|default:''|json_script:"filter-intent" }}
-            {{ property_type|default:''|json_script:"filter-type" }}
-            {{ price_range|default:''|json_script:"filter-budget" }}
-            {{ keyword|default:''|json_script:"filter-keyword" }}
-
             <script>
                 function getFilterVal(id) {
                     const el = document.getElementById(id);
@@ -729,6 +719,17 @@
             </div>
         {% endif %}
         </div>
+        
+            <!-- Json script tags-->
+            {{ amenity_filter|default:''|json_script:"amenity-filter-data" }}
+            {{ properties|json_script:"map-properties-data" }}
+            {{ city|default:''|json_script:"filter-city" }}
+            {{ state|default:''|json_script:"filter-state" }}
+            {{ listing_type|default:''|json_script:"filter-intent" }}
+            {{ property_type|default:''|json_script:"filter-type" }}
+            {{ price_range|default:''|json_script:"filter-budget" }}
+            {{ keyword|default:''|json_script:"filter-keyword" }}
+
 
         <div id="map"></div>
     </div>
@@ -779,7 +780,6 @@
                 if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
                     return;
                 }
-                {{ amenity_filter|default:''|json_script:"filter-amenity"}}
                 const selectedAmenity = getFilterVal("filter-amenity");
 
                 const allAmenities = Array.isArray(loc.nearby_amenities)
