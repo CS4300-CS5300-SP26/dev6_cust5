@@ -476,6 +476,12 @@ ChatGPT was used for:
 
 ---
 
+## Acknowledgement
+
+BearEstate does not own the copyright or trademark rights to the bear logo used in this project. The bear logo is used for educational and non-commercial project purposes only. All rights to the original logo belong to their respective copyright or trademark owners.
+
+---
+
 ## Summary
 
 This feature improves the user experience by:
