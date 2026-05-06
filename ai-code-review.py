@@ -13,9 +13,7 @@ with open("diff.txt", "r") as file:
 
 
 # create the OpenAI client using the API key stored in the environment
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 # read the model name from the environment, or use the required default model
