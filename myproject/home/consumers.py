@@ -18,6 +18,7 @@ State is held in-memory on `self`, per connection. Reload = new chat.
 Anonymous users are rejected in connect() to prevent burning OpenAI
 credits on unauthenticated traffic.
 """
+
 import json
 import logging
 from urllib.parse import parse_qs
@@ -66,9 +67,7 @@ class AIListingAgentConsumer(AsyncWebsocketConsumer):
 
         if not (self.filters["city"] and self.filters["state"]):
             await self.accept()
-            await self._send_error(
-                "Please run a property search before opening the chat."
-            )
+            await self._send_error("Please run a property search before opening the chat.")
             await self.close(code=4400)
             return
 
@@ -77,16 +76,17 @@ class AIListingAgentConsumer(AsyncWebsocketConsumer):
         # Initial listing fetch + conversation seed. Both hit the DB
         # and/or network, so run off the event loop.
         self.listings = await self._fetch_listings(self.filters)
-        self.history = ai_listing_agent.build_initial_history(
-            self.filters, self.listings
-        )
+        self.history = ai_listing_agent.build_initial_history(self.filters, self.listings)
 
-        await self._send({
-            "type": "ready",
-            "greeting": self.history[-1]["content"],
-            "listings": self.listings,
-            "filters": self.filters,
-        })
+        await self._send(
+            {
+                "type": "ready",
+                "greeting": self.history[-1]["content"],
+                "notice": ai_listing_agent.LANGUAGE_NOTICE,
+                "listings": self.listings,
+                "filters": self.filters,
+            }
+        )
 
     async def disconnect(self, close_code):
         # No cleanup needed — in-memory state is garbage-collected.
@@ -110,9 +110,24 @@ class AIListingAgentConsumer(AsyncWebsocketConsumer):
         if len(user_text) > 2000:
             user_text = user_text[:2000]
 
-        # Echo back the user's message so the browser has a uniform
-        # event stream to render against.
         await self._send({"type": "user_message", "text": user_text})
+
+        # Guardrails
+        guard = ai_listing_agent.check_message_guardrails(user_text)
+        if not guard["ok"]:
+            logger.info(
+                "Chat guardrail blocked message (reason=%s, user=%s)",
+                guard.get("reason"),
+                getattr(self.user, "username", "?"),
+            )
+            await self._send(
+                {
+                    "type": "system_message",
+                    "text": guard["reply"],
+                    "reason": guard.get("reason", ""),
+                }
+            )
+            return
 
         self.history.append({"role": "user", "content": user_text})
         await self._send({"type": "thinking"})
@@ -120,25 +135,26 @@ class AIListingAgentConsumer(AsyncWebsocketConsumer):
         result = await self._run_chat_turn()
 
         if not result["ok"]:
-            await self._send_error(
-                result.get("error") or "AI chat failed."
-            )
+            await self._send_error(result.get("error") or "AI chat failed.")
             return
 
-        # If refine_search ran, push new listings before the assistant
-        # reply so the map redraws just ahead of the text.
+        # If refine_search ran, push new listings before the assistant reply so the map redraws just ahead of the text.
         if result.get("refined"):
-            await self._send({
-                "type": "listings_updated",
-                "listings": self.listings,
-                "filters": self.filters,
-            })
+            await self._send(
+                {
+                    "type": "listings_updated",
+                    "listings": self.listings,
+                    "filters": self.filters,
+                }
+            )
             await self._log_search(self.filters, len(self.listings))
 
-        await self._send({
-            "type": "assistant_message",
-            "text": result["reply"],
-        })
+        await self._send(
+            {
+                "type": "assistant_message",
+                "text": result["reply"],
+            }
+        )
 
     # ---------- helpers ------------------------------------------------
 
@@ -152,6 +168,7 @@ class AIListingAgentConsumer(AsyncWebsocketConsumer):
     def _fetch_listings(self, filters):
         # Imported lazily to avoid circular imports at module load.
         from .views import build_enriched_listings
+
         try:
             return build_enriched_listings(
                 filters.get("city", ""),
@@ -191,8 +208,10 @@ class AIListingAgentConsumer(AsyncWebsocketConsumer):
         The OpenAI call is blocking, and refine_callback hits DB /
         RentCast, so we run the whole turn in a worker thread.
         """
+
         def refine(new_filters):
             from .views import build_enriched_listings
+
             return build_enriched_listings(
                 new_filters.get("city", ""),
                 new_filters.get("state", ""),
@@ -204,5 +223,8 @@ class AIListingAgentConsumer(AsyncWebsocketConsumer):
             )
 
         return ai_listing_agent.chat_turn(
-            self.history, self.filters, self.listings, refine,
+            self.history,
+            self.filters,
+            self.listings,
+            refine,
         )

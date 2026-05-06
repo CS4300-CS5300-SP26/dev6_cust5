@@ -1,5 +1,5 @@
-from django.db import models
 from django.contrib.auth.models import User
+from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -9,8 +9,9 @@ class UserProfile(models.Model):
     Extends Django's built-in User with optional contact info.
     Phone and email are not required for now. They can become mandatory later.
     """
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    phone = models.CharField(max_length=20, blank=True, default='')
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    phone = models.CharField(max_length=20, blank=True, default="")
 
     # Email is already stored on Django's built-in User model.
     email_verified = models.BooleanField(default=False)
@@ -19,13 +20,13 @@ class UserProfile(models.Model):
     is_agent_verified = models.BooleanField(default=False)
 
     # TOTP secret stored after the user completes 2FA setup.
-    totp_secret = models.CharField(max_length=64, blank=True, default='')
+    totp_secret = models.CharField(max_length=64, blank=True, default="")
     totp_enabled = models.BooleanField(default=False)
 
     class TwoFAMethod(models.TextChoices):
-        NONE = 'none', 'None'
-        TOTP = 'totp', 'Authenticator App'
-        EMAIL = 'email', 'Email Code'
+        NONE = "none", "None"
+        TOTP = "totp", "Authenticator App"
+        EMAIL = "email", "Email Code"
 
     two_fa_method = models.CharField(
         max_length=5,
@@ -42,23 +43,24 @@ class AgentAd(models.Model):
     Advertisement created by a verified real estate agent.
     Only active and complete ads should be shown to users.
     """
-    agent = models.ForeignKey(User, on_delete=models.CASCADE, related_name='agent_ads')
+
+    agent = models.ForeignKey(User, on_delete=models.CASCADE, related_name="agent_ads")
     headline = models.CharField(max_length=120)
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=2)
     brokerage = models.CharField(max_length=120)
     license_number = models.CharField(max_length=50)
-    phone = models.CharField(max_length=20, blank=True, default='')
+    phone = models.CharField(max_length=20, blank=True, default="")
     email = models.EmailField()
-    website = models.URLField(blank=True, default='')
+    website = models.URLField(blank=True, default="")
     bio = models.TextField(max_length=1000)
-    specialties = models.CharField(max_length=200, blank=True, default='')
+    specialties = models.CharField(max_length=200, blank=True, default="")
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-updated_at']
+        ordering = ["-updated_at"]
 
     def __str__(self):
         return f"{self.headline} - {self.agent.username}"
@@ -81,7 +83,8 @@ class AgentInquiry(models.Model):
     """
     Inquiry sent by a user from an agent advertisement or agent profile page.
     """
-    ad = models.ForeignKey(AgentAd, on_delete=models.CASCADE, related_name='inquiries')
+
+    ad = models.ForeignKey(AgentAd, on_delete=models.CASCADE, related_name="inquiries")
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     name = models.CharField(max_length=120)
     email = models.EmailField()
@@ -89,8 +92,8 @@ class AgentInquiry(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-created_at']
-        verbose_name_plural = 'Agent inquiries'    
+        ordering = ["-created_at"]
+        verbose_name_plural = "Agent inquiries"
 
     def __str__(self):
         return f"Inquiry from {self.name} about {self.ad.headline}"
@@ -116,8 +119,8 @@ class RoommatePost(models.Model):
     """
 
     class Status(models.TextChoices):
-        OPEN = 'open', 'Open'
-        CLOSED = 'closed', 'Closed'
+        OPEN = "open", "Open"
+        CLOSED = "closed", "Closed"
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     message = models.CharField(max_length=500)
@@ -130,7 +133,7 @@ class RoommatePost(models.Model):
     )
 
     rent = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    property_type = models.CharField(max_length=20, blank=True, default='')
+    property_type = models.CharField(max_length=20, blank=True, default="")
 
     def __str__(self):
         return f"{self.user.username} - {self.status}"
@@ -157,33 +160,33 @@ class SearchHistory(models.Model):
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name='search_history',
+        related_name="search_history",
     )
-    session_key = models.CharField(max_length=40, blank=True, default='')
+    session_key = models.CharField(max_length=40, blank=True, default="")
 
     # Filter values as submitted.
-    city = models.CharField(max_length=100, blank=True, default='')
-    state = models.CharField(max_length=2, blank=True, default='')
-    listing_type = models.CharField(max_length=20, blank=True, default='')
-    property_type = models.CharField(max_length=20, blank=True, default='')
-    budget = models.CharField(max_length=20, blank=True, default='')
-    amenity_filter = models.CharField(max_length=50, blank=True, default='')
-    sort_by = models.CharField(max_length=20, blank=True, default='')
-    keyword = models.CharField(max_length=200, blank=True, default='')
+    city = models.CharField(max_length=100, blank=True, default="")
+    state = models.CharField(max_length=2, blank=True, default="")
+    listing_type = models.CharField(max_length=20, blank=True, default="")
+    property_type = models.CharField(max_length=20, blank=True, default="")
+    budget = models.CharField(max_length=20, blank=True, default="")
+    amenity_filter = models.CharField(max_length=50, blank=True, default="")
+    sort_by = models.CharField(max_length=20, blank=True, default="")
+    keyword = models.CharField(max_length=200, blank=True, default="")
 
     result_count = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         indexes = [
             models.Index(
-                fields=['user', '-created_at'],
-                name='home_sh_user_created_idx',
+                fields=["user", "-created_at"],
+                name="home_sh_user_created_idx",
             ),
             models.Index(
-                fields=['session_key', '-created_at'],
-                name='home_sh_session_created_idx',
+                fields=["session_key", "-created_at"],
+                name="home_sh_session_created_idx",
             ),
         ]
 

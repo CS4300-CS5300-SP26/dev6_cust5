@@ -18,20 +18,20 @@ settings.py additions needed:
 """
 
 import os
-from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter, URLRouter
+import your_project.routing as ws_routing  # update your_project to your module name
 from channels.auth import AuthMiddlewareStack
+from channels.routing import ProtocolTypeRouter, URLRouter
+from django.core.asgi import get_asgi_application
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "your_project.settings")  # ← update
 
 # Must be called before importing routing so Django apps are ready
 django_asgi_app = get_asgi_application()
 
-import your_project.routing as ws_routing  # ← update your_project to your module name
 
-application = ProtocolTypeRouter({
-    "http": django_asgi_app,
-    "websocket": AuthMiddlewareStack(
-        URLRouter(ws_routing.websocket_urlpatterns)
-    ),
-})
+application = ProtocolTypeRouter(
+    {
+        "http": django_asgi_app,
+        "websocket": AuthMiddlewareStack(URLRouter(ws_routing.websocket_urlpatterns)),
+    }
+)

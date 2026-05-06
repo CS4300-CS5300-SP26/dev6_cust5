@@ -24,3 +24,21 @@ feedback.md
 .DS_Store
 .env
 .env
+
+# Database files (catch-all, not just the one path)
+*.sqlite3
+*.sqlite3-journal
+
+# Redis
+*.rdb
+*.aof
+myproject/dump.rdb
+myproject/redis_logs.txt
+
+# Logs
+*.log
+
+# Editor/IDE
+.idea/
+.vscode/
+*.swp
