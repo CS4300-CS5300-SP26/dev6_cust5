@@ -343,12 +343,12 @@ This improves the map feature by helping users better understand the area around
 
 
 ### 16. Fix Linter Issues
-Resolved all linter issues and integrated linting into our CI pipeline so it runs automatically after tests, ensuring code quality before merges. We use Flake8 with a max line length of 125 and ignore specific rules (E265, W503 due to conflict with W504, and E402) to better align with our coding practices while maintaining consistency and readability.
+Resolved all linter issues and integrated linting into our CI pipeline so it runs automatically after tests, ensuring code quality before merges. We use Flake8 with a max line length of **120** and ignore specific rules (E265, W503 due to conflict with W504, and E402) to better align with our coding practices while maintaining consistency and readability.
 
 ---
 
 
-### 17. Fix Security Vulnerabilites
+### 17. Fix Security Vulnerabilities
 Addressed all 13 security vulnerabilities identified in the assessment, including exposed secrets/API keys, leaked Django SECRET_KEY, 2FA bypass, missing rate limiting, insecure Django security settings, committed database exposure, REST API mass assignment, anonymous WebSocket access, chat IDOR, stored/reflected XSS, unsafe |safe JSON rendering, and email OTP expiry enforcement. We also purged exposed API keys and the database from git history to eliminate any lingering sensitive data. We also added AI chatbot guardrails to reduce unsafe or nonsensical interactions. Regression tests were added in home/tests_security.py and home/tests_critical.py to verify the fixes and help prevent these vulnerabilities from being reintroduced.
 
 ---
