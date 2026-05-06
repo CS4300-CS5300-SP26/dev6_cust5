@@ -7,7 +7,7 @@ This iteration we implemented the following features keyword search, instant mes
 
 Live Website: https://bearestate.me/
 
---- 
+---
 
 ## Links
 
@@ -22,15 +22,15 @@ Live Website: https://bearestate.me/
 We added a price range filter to help users find housing within their budget more easily.
 
 A dropdown menu was added to the search bar with options such as:
-- Any Price  
-- Under $900  
-- $900 – $1,400  
-- $1,400 – $2,000  
-- $2,000+  
+- Any Price
+- Under $900
+- $900 – $1,400
+- $1,400 – $2,000
+- $2,000+
 
 When the user submits the search:
-- The selected range is split into a minimum and maximum price  
-- The system filters properties in the database using those values  
+- The selected range is split into a minimum and maximum price
+- The system filters properties in the database using those values
 
 This allows users to quickly narrow down listings that match their budget.
 
@@ -40,15 +40,15 @@ This allows users to quickly narrow down listings that match their budget.
 To expand the number of available listings, we integrated the RentCast API.
 
 When a user searches by location:
-- The system sends a request to the API  
+- The system sends a request to the API
 
 Each API listing includes:
-- Property address  
-- City  
-- Property type  
-- Bedrooms and bathrooms  
-- Square footage  
-- Year built  
+- Property address
+- City
+- Property type
+- Bedrooms and bathrooms
+- Square footage
+- Year built
 
 This ensures users can still find housing options even if the database has limited results.
 
@@ -59,16 +59,16 @@ This ensures users can still find housing options even if the database has limit
 The roommate posting page was redesigned and expanded.
 
 **Tasks completed:**
-- Created a roommate posting HTML page  
-- Reused the homepage layout (banner, search bar, styling)  
-- Added input fields for roommate posts  
-- Built expandable post view (click to zoom in/out)  
-- Implemented a carousel to browse posts  
+- Created a roommate posting HTML page
+- Reused the homepage layout (banner, search bar, styling)
+- Added input fields for roommate posts
+- Built expandable post view (click to zoom in/out)
+- Implemented a carousel to browse posts
 
 **How it works:**
-- Users can scroll through roommate posts horizontally  
-- Clicking a post expands it to show full details  
-- Clicking again closes the expanded view 
+- Users can scroll through roommate posts horizontally
+- Clicking a post expands it to show full details
+- Clicking again closes the expanded view
 
 ---
 
@@ -147,7 +147,7 @@ This improves account security and helps prevent unauthorized access.
 
 We added Neighborhood Price Filters to help users compare the true monthly cost of living in different areas, not just the rent price.
 
-**What was added:** 
+**What was added:**
 - Neighborhood-based cost breakdown for listings
 - Separate display of rent, utilities, and service costs
 - Total monthly cost calculation
@@ -190,27 +190,27 @@ Users can sort listings by:
 
 This feature helps users better understand affordability across neighborhoods and compare listings beyond base rent alone.
 
---- 
+---
 
  ### 9. AI Listing Agent and AI Chatbot
 
 We implemented an **AI Listing Agent** and an **AI-powered chatbot** to make the housing search experience more interactive, personalized, and responsive.
 
 **What was added:**
-- An AI chatbot built on **WebSockets** for real-time interaction  
-- Deployment using **Daphne** with Django’s **ASGI** interface  
-- Tool-calling functionality for dynamic backend function execution  
-- Personalized listing recommendations based on user history  
-- A scoring system to rank listings according to relevance  
+- An AI chatbot built on **WebSockets** for real-time interaction
+- Deployment using **Daphne** with Django’s **ASGI** interface
+- Tool-calling functionality for dynamic backend function execution
+- Personalized listing recommendations based on user history
+- A scoring system to rank listings according to relevance
 
 **How it works:**
-- The chatbot communicates with users in real time through **WebSocket** connections  
-- **Daphne** serves the Django application through **ASGI**, allowing it to efficiently handle concurrent connections  
-- The model can invoke backend functions through tool calling to retrieve and process listing data dynamically  
-- Based on user queries, the system can interpret filters, keywords, and preferences, fetch relevant listing data, and return structured, context-aware responses  
-- The AI Listing Agent maintains a history of user interactions and prior searches  
-- This history is used to generate personalized recommendations  
-- A scoring mechanism ranks listings using user preferences, prior queries, and relevant listing attributes  
+- The chatbot communicates with users in real time through **WebSocket** connections
+- **Daphne** serves the Django application through **ASGI**, allowing it to efficiently handle concurrent connections
+- The model can invoke backend functions through tool calling to retrieve and process listing data dynamically
+- Based on user queries, the system can interpret filters, keywords, and preferences, fetch relevant listing data, and return structured, context-aware responses
+- The AI Listing Agent maintains a history of user interactions and prior searches
+- This history is used to generate personalized recommendations
+- A scoring mechanism ranks listings using user preferences, prior queries, and relevant listing attributes
 
 This feature improves the housing search experience by making recommendations smarter, more personalized, and more responsive to user needs.
 
@@ -240,14 +240,14 @@ This sprint, we implemented the **Social Posts** functionality, which creates a 
 
 We followed a test-driven development (TDD) approach using the **red–green–refactor cycle**.
 
-- Red: Wrote tests before implementation  
-- Green: Implemented features until tests passed  
-- Refactor: Cleaned and improved code  
+- Red: Wrote tests before implementation
+- Green: Implemented features until tests passed
+- Refactor: Cleaned and improved code
 
 **Tests included:**
-- Registration tests (signup, login, invalid inputs)  
-- Property search tests (location filtering, price filtering, API mocking)  
-- Roommate posting tests (create, view, close, delete, permission checks)  
+- Registration tests (signup, login, invalid inputs)
+- Property search tests (location filtering, price filtering, API mocking)
+- Roommate posting tests (create, view, close, delete, permission checks)
 
 Overall, the project achieved approximately **85% code coverage**.
 
@@ -342,14 +342,26 @@ This improves the map feature by helping users better understand the area around
 ---
 
 
+### 16. Fix Linter Issues
+Resolved all linter issues and integrated linting into our CI pipeline so it runs automatically after tests, ensuring code quality before merges. We use Flake8 with a max line length of 125 and ignore specific rules (E265, W503 due to conflict with W504, and E402) to better align with our coding practices while maintaining consistency and readability.
+
+---
+
+
+### 17. Fix Security Vulnerabilites
+Addressed all 13 security vulnerabilities identified in the assessment, including exposed secrets/API keys, leaked Django SECRET_KEY, 2FA bypass, missing rate limiting, insecure Django security settings, committed database exposure, REST API mass assignment, anonymous WebSocket access, chat IDOR, stored/reflected XSS, unsafe |safe JSON rendering, and email OTP expiry enforcement. We also purged exposed API keys and the database from git history to eliminate any lingering sensitive data. We also added AI chatbot guardrails to reduce unsafe or nonsensical interactions. Regression tests were added in home/tests_security.py and home/tests_critical.py to verify the fixes and help prevent these vulnerabilities from being reintroduced.
+
+---
+
+
 
 ## Files Updated
 
 ### views.py
-- Handles search filtering logic  
-- Applies price range filtering  
-- Calls the RentCast API  
-- Passes results to templates  
+- Handles search filtering logic
+- Applies price range filtering
+- Calls the RentCast API
+- Passes results to templates
 - Supports keyword search and map-related search behavior
 - Added neighborhood cost enrichment for map listings
 - Added amenity filtering and total-cost sorting
@@ -362,23 +374,23 @@ This improves the map feature by helping users better understand the area around
 
 
 ### rentcast_api.py
-- Sends requests to the RentCast API  
+- Sends requests to the RentCast API
 - Returns property listing data
-- Supplies coordinate data when available 
+- Supplies coordinate data when available
 
 
 ### bear_estate_homepage.html
-- Added budget dropdown  
-- Displays database and API listings  
+- Added budget dropdown
+- Displays database and API listings
 - Connects homepage search to other features such as the interactive map
 
 ### models.py
-- Updated for roommate postings  
-- Integrated with Django REST Framework  
+- Updated for roommate postings
+- Integrated with Django REST Framework
 - Supports messaging-related data storage
 - Added AgentAd model for verified agent advertisements
 - Added AgentInquiry model for user-submitted agent contact messages
-- Added agent verification field to user profiles 
+- Added agent verification field to user profiles
 
 
 ### forms.py
@@ -436,18 +448,18 @@ This improves the map feature by helping users better understand the area around
 - Added marker rendering and click behavior
 - Added geocoding support for missing coordinates
 
---- 
+---
 
 ## Example Search
 
 **Input:**
-- Location: Denver  
-- Type: Apartment  
-- Budget: $900 – $1,400  
+- Location: Denver
+- Type: Apartment
+- Budget: $900 – $1,400
 
 **Output:**
-- Matching properties from the database  
-- Additional listings from the RentCast API  
+- Matching properties from the database
+- Additional listings from the RentCast API
 - Map-based results when applicable
 
 ---
@@ -472,15 +484,15 @@ Django REST Framework is required for roommate post handling.
 ## AI Usage
 
 Claude AI was used during frontend development to:
-- Structure HTML/CSS  
-- Debug errors  
-- Implement UI features like expand/collapse and carousel layouts  
+- Structure HTML/CSS
+- Debug errors
+- Implement UI features like expand/collapse and carousel layouts
 
 ChatGPT was used for:
-- RentCast API implementation  
-- Debugging issues  
-- Ensuring correct data fetching and display  
-- implementing leaflet 
+- RentCast API implementation
+- Debugging issues
+- Ensuring correct data fetching and display
+- implementing leaflet
 
 ---
 
@@ -493,13 +505,13 @@ BearEstate does not own the copyright or trademark rights to the bear logo used 
 ## Summary
 
 This feature improves the user experience by:
-- Allowing price-based filtering  
-- Expanding listings using an external API  
-- Providing an interactive roommate posting interface  
-- Supporting keyword-based property search  
-- Enabling real-time instant messaging between users  
-- Adding an interactive map for visual property browsing  
-- Strengthening account security through secure authentication 
+- Allowing price-based filtering
+- Expanding listings using an external API
+- Providing an interactive roommate posting interface
+- Supporting keyword-based property search
+- Enabling real-time instant messaging between users
+- Adding an interactive map for visual property browsing
+- Strengthening account security through secure authentication
 - Comparing neighborhood-level living costs through Neighborhood Price Filters
 - Connecting users with verified real estate agents through Agent Advertising
 - Allowing users to submit inquiries through public agent profiles
