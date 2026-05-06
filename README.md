@@ -6,6 +6,14 @@ This iteration of our project focuses on improving the housing search experience
 This iteration we implemented the following features keyword search, instant messaging, property map feature and secure user authentication.
 
 Live Website: https://bearestate.me/
+
+--- 
+
+## Links
+
+- **Live Website:** [BearEstate](https://bearestate.me/)
+- **Project Demo Video:** [Watch on YouTube](https://youtu.be/7hvfWE0wdw4?si=bq_AXsVD7Qe7j0Ml)
+
 ---
 
 ## Features Implemented
