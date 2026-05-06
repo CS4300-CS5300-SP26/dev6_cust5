@@ -18,8 +18,7 @@ permissions:
 
 jobs:
   ai_code_review:
-    #use a GitHub-hosted Ubuntu runner and do not run if the request comes from dependabot
-    if: github.actor != 'dependabot[bot]'
+    #use a GitHub-hosted Ubuntu runner
     runs-on: ubuntu-latest
 
     steps:
