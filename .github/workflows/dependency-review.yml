@@ -24,6 +24,6 @@ jobs:
 
       #scan dependency changes in the pull request and fail only on high or critical issues
       - name: Dependency review
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
